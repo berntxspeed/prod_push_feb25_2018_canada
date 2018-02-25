@@ -1,0 +1,2 @@
+SELECT *
+FROM Canada_RMA_Consumer_Shipment_SendableDE

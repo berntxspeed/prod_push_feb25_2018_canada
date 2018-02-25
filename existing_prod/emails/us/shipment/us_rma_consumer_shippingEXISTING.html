@@ -1,0 +1,549 @@
+%%[ Var @po, @customer_id, @order_status, @date_ordered, @order_id, @shipping_assignment_id, @outside_rep_name, @outside_rep_phone, @outside_rep_email,
+@inside_rep_name, @inside_rep_phone, @inside_rep_email, @header_shipping_address_id,
+@shipping_shipping_address_id, @shipping_company, @shipping_address_1, @shipping_address_2, @shipping_city,
+@shipping_state, @shipping_zip_code, @shipping_country, @shipping_phone,
+@shipment_number, @shipping_tracking_number_1, @shipping_tracking_link_1, @shipping_packing_slip, @shipping_method,
+@shipping_date, @shipping_tracking_number_2, @shipping_tracking_link_2,@shipping_tracking_number_3, @shipping_tracking_link_3,
+@shipment_shipping_address_id,
+@line_number, @product_description, @product_color, @product_size, @sku, @upc,
+@qty_ordered, @qty_shipped,
+@i, @j, @lines_shipping_shipment_data, @line_shipping_items, @shipping_shipment_row, @shipping_items_row, @shipment_row, @sent
+
+if _MessageContext == "VAWP" or _MessageContext == "Social" or _MessageContext == "FTAF" then
+	set @order_id = Lookup("SendLog","order_id","SubID",SubscriberID,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+	set @customer_id = Lookup("SendLog","customer_id","SubID",SubscriberID,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+ELSE
+	/* FIELDS NEEDED ON SEND LIST */
+	set @order_id = order_id
+	set @customer_id = customer_id
+ENDIF
+
+set @sent = "true"
+set @lines_shipping_shipment_data = LookupRows("FromSAP_Shipping","order_id",@order_id)
+
+set @shipmentRow = Row(@lines_shipping_shipment_data,1)
+
+set @po = Field(@shipmentRow,"po_number")
+set @customer_id = customer_id
+set @order_status = Field(@shipmentRow,"order_status")
+set @date_ordered_value = Field(@shipmentRow,"date_ordered")
+set @date_ordered = FormatDate(@date_ordered_value,"MM/DD/YYYY")
+set @order_id = Field(@shipmentRow,"order_id")
+set @outside_rep_name = Field(@shipmentRow,"outside_rep_name")
+set @outside_rep_phone = Field(@shipmentRow,"outside_rep_phone")
+set @outside_rep_email = Field(@shipmentRow,"outside_rep_email")
+set @inside_rep_name = Field(@shipmentRow,"inside_rep_name")
+set @inside_rep_phone = Field(@shipmentRow,"inside_rep_phone")
+set @inside_rep_email = Field(@shipmentRow,"inside_rep_email")
+set @shipment_number = Field(@shipmentRow,"shipment_number")
+]%%
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Consumer Shipment</title>
+</head>
+<body>
+<table style="border-collapse:collapse;font-family:Arial,Helvetica,Verdana,sans-serif;font-size:11.4px;margin:0px;color:#000000;background:none repeat scroll 0% 0% #cac3b9;border:0px none;padding:20px 0px 0px;width:100%" width="100%" border="0" cellpadding="0" cellspacing="0">
+	<tbody>
+		<tr>
+			<td style="margin:0;padding:10px 0 0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top">To view this email as a web page, click <a href="%%view_email_url%%">here.</a></td>
+		</tr>
+		<tr>
+			<td style="margin:0;padding:0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top"><a href="%%view_email_url%%" style="text-decoration:none;color:#cac3b9;">%%view_email_url%%</a></td>
+		</tr>
+		<tr>
+			<td style="padding:0;color:#231f20" align="center" valign="top">
+			<table style="border-collapse:collapse;border-radius:11.4px;border:10px solid #d1ccc2;background:none repeat scroll 0% 0% #cac3b9;padding:0px;margin:0px;width:674px" width="674px" cellpadding="0" cellspacing="0">
+				<tbody>
+					<tr>
+						<td style="padding:0;color:#231f20;border:none" align="center" valign="top">
+						<table style="border-collapse:collapse;margin:0px;padding:0px;width:674px" width="674px" bgcolor="#F6F6F6" cellpadding="0" cellspacing="0">
+							<!--Header Info - Start-->
+							<tr>
+								<td style="padding:0;color:#231f20;line-height:normal;background-color:#00253d;background-image:url('http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-header-bg.jpg');border:0; height: 91px;" align="left" height="91px" valign="top">
+								<table border="0" cellpadding="0" cellspacing="0">
+									<tbody>
+										<tr>
+											<td style="padding:0 0 0 18px;border:0;color:#231f20;line-height:0px; width: 170px; height: 91px;" align="left" height="91px" valign="middle" width="170px">
+											<a style="color:#ffffff;font-size:11.4px;font-family:Arial;text-decoration:underline">
+											<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-logo.png" border="0">
+											</a>
+											</td>
+											<td style="border:0;margin:0px;line-height:normal;color:white;padding:0px; height: 91px; width: 204px;" align="center" height="91px" valign="middle" width="204px">
+												&nbsp;
+											</td>
+											<td style="border:0;margin:0px;line-height:normal;color:white;padding:0px; height: 91px; width: 29px;" align="center" height="91px" valign="middle" width="29px">
+											<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-help.png" border="0">
+											</td>
+											<td style="border:0;padding:0 0 0 14px;color:#e4e4e4;line-height:18px;font-size:11.5px;font-family:Arial; width: 240px; height: 91px;" align="left" height="91px" valign="middle" width="240px">
+											Questions about your order?<br>
+                      Call us at <a href="tel:512.394.9384">512.394.9384</a> or email
+											<a style="text-decoration:none;color:#f3f3f3;font-weight:bold" title="Contact Us by Email" href="mailto:YETI%20Coolers%20Returns%20%3Cyetireturns@yeti.com%3E?subject=YETI+Return">yetireturns@yeti.com</a><br>
+											Mon-Fri 8 AM - 5 PM CST
+											</td>
+										</tr>
+									</tbody>
+								</table>
+								</td>
+							</tr>
+							<tr>
+								<td style="color:#231f20;height: 44px;" align="center" height="44px" valign="middle">
+									<table style="border-collapse:collapse;margin:0;padding:0;color:#231f20;line-height:0px; width: 100%;" cellpadding="0" cellspacing="0" width="100%">
+										<tr>
+											<td align="center" height="44px" width="16.666%" valign="middle" style="width: 16.666%;height: 44px;">
+												<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Coolers" href="http://yeti.com/coolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+													<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_01.gif" border="0" />
+												</a>
+											</td>
+
+											<td align="center" valign="middle">
+												<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Parts &amp;Accessories" href="http://yeti.com/drinkware/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+													<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_02.gif" border="0" />
+												</a>
+											</td>
+
+											<td align="center" valign="middle">
+												<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Accessories" href="http://yeti.com/accessories/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+													<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_03.gif" border="0" />
+												</a>
+											</td>
+
+											<td align="center" valign="middle">
+												<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Gear" href="http://yeti.com/apparel-gear/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+													<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_04.gif" border="0" />
+												</a>
+											</td>
+											<td align="center" valign="middle">
+												<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:underline;line-height:0px" title="Field Notes" href="http://yeti.com/pages/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+													<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_05.gif" border="0" />
+												</a>
+											</td>
+											<td align="center" valign="middle">
+												<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:underline;line-height:0px" title="About YETI" href="http://yeti.com/about-yeti/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+													<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_06.gif" border="0" />
+												</a>
+											</td>
+										</tr>
+									</table>
+								</td>
+							</tr>
+							<!--Header Info - End-->
+							<!--Order Info - Start-->
+							<tr>
+								<td style="font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;padding:0 0 0 18px;font-weight:bold;" align="left" valign="top">
+								<table bgcolor="#F6F6F6" border="0" width="638px" cellpadding="0" cellspacing="0" style="width: 638px">
+									<tbody>
+										<tr>
+											<td style="text-align:center;font-family:Arial;font-size:17px;line-height:normal;color:#515151;padding:20px 0 0 5px;font-weight:normal;border-top:1px solid #d8d8d8" align="left" valign="top">
+											<b>Return Shipment Notification</b>
+											</td>
+										</tr>
+										<tr>
+											<td style="font-family:Arial;font-size:14px;line-height:normal;color:#515151;padding:20px 0 0 5px;font-weight:normal;" align="left" valign="top">
+											Your shipment is on its way for Return Material Authorization
+											</td>
+										</tr>
+										<tr>
+											<td>
+											<table>
+												<tr>
+													<td width="270px" style="width: 270px; font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:24px; padding:22px 0 14px 0;" align="left" valign="top">
+													<!--Order Info - Start-->
+													Sales Order #: <span style="font-weight:normal;">%%=v(@order_id)=%%</span><br>
+													Customer ID: <span style="font-weight:normal;">%%=v(@customer_id)=%%</span><br>
+
+													PO: <span style="font-weight:normal;">%%=v(@po)=%%</span>
+													</td>
+													<td style="margin-left:10px;font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:24px; padding:22px 0 14px 0;" align="left" valign="top">
+													Date Ordered: <span style="text-transform:none;font-weight:normal;">%%=v(@date_ordered)=%%</span><br>
+													Order Status: <span style="text-transform:none;font-weight:normal;">%%=v(@order_status)=%%</span>
+													</td>
+													<!--Order Info - End-->
+												</tr>
+											</table>
+											</td>
+										</tr>
+
+
+
+%%[
+/* ------- Dynamic Shipping Blocks ------- */
+if _MessageContext == "VAWP" or _MessageContext == "Social" or _MessageContext == "FTAF" then
+Set @shipmentRows = LookupRows("FromSAP_Shipping","ORDER_ID",@order_id,"consumed",1,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+Else
+Set @shipmentRows = LookupRows("FromSAP_Shipping","ORDER_ID",@order_id)
+EndIf
+Set @uniqueShipments = ""
+Set @uniqueShipments = Concat(@uniqueShipments,Field(Row(@shipmentRows,1),"shipment_number"))
+Set @uniqueShipments = Concat(@uniqueShipments,"|")
+
+if RowCount(@shipmentRows) > 1 then
+for @rows = 2 to RowCount(@shipmentRows) do
+  Set @value = Field(Row(@shipmentRows,@rows),"shipment_number")
+  if IndexOf(@uniqueShipments,@value) == 0 then
+    Set @uniqueShipments = Concat(@uniqueShipments,@value)
+    Set @uniqueShipments = Concat(@uniqueShipments,"|")
+  endif
+next @rows
+endif
+
+Set @uniqueShipmentsRowset = BuildRowsetFromString(@uniqueShipments,"|")
+
+for @tests = 1 to RowCount(@uniqueShipmentsRowset) do
+Set @temp = Field(Row(@uniqueShipmentsRowset,@tests),1)
+next @tests
+/* ----- End Dynamic Shipping Blocks ----- */
+										for @i = 1 to Subtract(RowCount(@uniqueShipmentsRowset),1) do
+Set @shipmentItems = LookupRows("FromSAP_Shipping","order_id",@order_id,"shipment_number",Field(Row(@uniqueShipmentsRowset,@i),1))
+											set @shipment_row = Row(@shipmentItems, 1)
+											set @shipping_packing_slip = Field(@shipment_row, "packing_slip_number")
+											set @shipping_method = Field(@shipment_row, "shipping_method")
+											set @shipping_date_value = Field(@shipment_row, "shipping_date")
+set @shipping_date = FormatDate(@shipping_date_value,"MM/DD/YYYY")
+											/*set @shipping_tracking_number_1 = Field(@shipment_row, "shipping_tracking_number_1")
+											set @shipping_tracking_link_1 = Field(@shipment_row, "shipping_tracking_link_1")
+											set @shipping_tracking_number_2 = Field(@shipment_row, "shipping_tracking_number_2")
+											set @shipping_tracking_link_2 = Field(@shipment_row, "shipping_tracking_link_2")
+											set @shipping_tracking_number_3 = Field(@shipment_row, "shipping_tracking_number_3")
+											set @shipping_tracking_link_3 = Field(@shipment_row, "shipping_tracking_link_3")*/
+set @shipping_tracking_number = Field(@shipment_row, "tracking_number")
+set @shipping_tracking_link = Field(@shipment_row, "tracking_link")
+
+
+set @shipping_company = Field(@shipment_row, "shipping_company")
+set @shipping_address_1 = Field(@shipment_row, "shipping_address_1")
+set @shipping_address_2 = Field(@shipment_row, "shipping_address_2")
+set @shipping_city = Field(@shipment_row, "shipping_city")
+set @shipping_state = Field(@shipment_row, "shipping_state")
+set @shipping_zip_code = Field(@shipment_row, "shipping_zip_code")
+set @shipping_country = Field(@shipment_row, "shipping_country")
+set @shipping_phone = Field(@shipment_row, "shipping_phone")
+										]%%
+										<tr>
+											<td style="background-color:#ffffff; border:1px solid #dbd6d1;">
+											<table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%;">
+												<tr>
+													<td style="font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#f4f2f0;font-size:12px;line-height:16px;color:#000000;padding:15px 0 13px 16px; background-color:#f4f2f0;letter-spacing:1px;height: 19px;" align="left" height="19px" colspan="2">
+														%%[ if Subtract(RowCount(@uniqueShipmentsRowset),1) > 1 then ]%%
+															SHIPMENT %%=v(@i)=%%
+														%%[ else ]%%
+															SHIPMENT DETAILS
+														%%[ endif ]%%
+													</td>
+												</tr>
+												<tr>
+													<td valign="top" width="220px" style="width: 220px;">
+													<table cellpadding="0" cellspacing="0" border="0">
+														<thead>
+															<tr>
+																<th colspan="2" style="font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px;letter-spacing:1px;height: 19px;" align="left" height="19px" >
+																Shipping Address
+																</th>
+															</tr>
+														</thead>
+														<tbody>
+															<tr>
+																<!--Shipping Address - Start-->
+																<td style="font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px;" align="left" valign="top">
+																%%=v(@shipping_company)=%%<br>
+																<a>%%=v(@shipping_address_1)=%%</a><br>
+																%%[ if Length(@shipping_address_2) > 0 then ]%% <a>%%=v(@shipping_address_2)=%%</a><br>
+																%%[ endif ]%%
+																<a>%%=v(@shipping_city)=%%, %%=v(@shipping_state)=%%
+																%%=v(@shipping_zip_code)=%%</a><br>
+																<a>%%=v(@shipping_country)=%%</a><br>
+
+																<span><i>T:</i>%%=v(@shipping_phone)=%%</a></span>
+																</td>
+																<!--Shipping Address - End-->
+															</tr>
+														</tbody>
+													</table>
+													</td>
+													<td style="padding-right:1%;font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;font-weight:bold;" align="center" valign="top">
+													<table cellpadding="0" cellspacing="0" border="0" >
+														<tr>
+															<td>
+															<table style="padding:0;border:none; width: 100%;" cellpadding="0" cellspacing="0" border="0" width="100%">
+																<thead>
+																	<tr>
+																		<th colspan="2" style="font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px;letter-spacing:1px;height: 19px;" align="left" height="19px" >
+																		Track Your Shipment
+																		</th>
+																	</tr>
+																</thead>
+																<tbody>
+																	<!--Ship Method - Start-->
+																	<tr>
+																		<td style="padding:7px 0 13px 16px;" align="left" valign="top">
+																		<table style="font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;">
+																			%%[ IF Length(@shipping_tracking_number) > 0 THEN ]%%
+																			<tr>
+																				<td style="padding-right:10px;">Master Tracking Number(s):</td>
+																				<td style="text-overflow:visible;"><a href="%%=RedirectTo(@shipping_tracking_link)=%%">%%=v(@shipping_tracking_number)=%%</a></td>
+																			</tr>
+																			<tr>
+																				<td style="padding-right:10px;">&nbsp;</td>
+																				<td align="left"><a href="%%=RedirectTo(@shipping_tracking_link)=%%"><img style="width:120px;" width="120px" border="0" src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/track-shipment.png" /></a></td>
+																			</tr>
+																			%%[ ENDIF ]%%
+																			%%[ if Length(@shipping_tracking_number_2) > 0 then ]%%
+																			<tr>
+																				<td style="line-height:8px; padding-right:10px;">&nbsp;</td>
+																				<td style="line-height:8px">&nbsp;</td>
+																			</tr>
+																			<tr>
+																				<td style="padding-right:10px;">&nbsp;</td>
+																				<td style="text-overflow:visible;"><a href="%%=RedirectTo(@shipping_tracking_link_2)=%%">%%=v(@shipping_tracking_number_2)=%%</a></td>
+																			</tr>
+																			<tr>
+																				<td style="padding-right:10px;">&nbsp;</td>
+																				<td align="left"><a style="border:0; text-decoration:none;" href="%%=RedirectTo(@shipping_tracking_link_2)=%%"><img style="width:120px;" width="120px" border="0" src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/track-shipment.png" /></a></td>
+																			</tr>
+																			<tr>
+																				<td style="line-height:8px; padding-right:10px;">&nbsp;</td>
+																				<td style="line-height:8px">&nbsp;</td>
+																			</tr>
+																			%%[ endif ]%%
+																			%%[ if Length(@shipping_tracking_number_3) > 0 then ]%%
+																			<tr>
+																				<td style="padding-right:10px;">&nbsp;</td>
+																				<td style="text-overflow:visible;"><a href="%%=RedirectTo(@shipping_tracking_link_3)=%%">%%=v(@shipping_tracking_number_3)=%%</a></td>
+																			</tr>
+																			<tr>
+																				<td style="padding-right:10px;">&nbsp;</td>
+																				<td align="left"><a style="border:0; text-decoration:none;" href="%%=RedirectTo(@shipping_tracking_link_3)=%%"><img style="width:120px;" width="120px" border="0" src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/track-shipment.png" /></a></td>
+																			</tr>
+																			%%[ endif ]%%
+																			<tr>
+																				<td style="padding-right:10px;">Packing Slip #:</td>
+																				<td>%%=v(@shipping_packing_slip)=%%</td>
+																			</tr>
+																			<tr>
+																				<td style="padding-right:10px;">Shipping Method:</td>
+																				<td>%%=v(@shipping_method)=%%</td>
+																			</tr>
+																			<tr>
+																				<td style="padding-right:10px;">Shipping Date:</td>
+																				<td>%%=v(@shipping_date)=%%</td>
+																			</tr>
+																		</table>
+																		</td>
+																	</tr>
+																	<!--Ship Method - End-->
+																</tbody>
+															</table>
+															</td>
+														</tr>
+													</table>
+													</td>
+												</tr>
+												<tr>
+													<td style="font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 2px 16px; letter-spacing:1px; height: 19px;" align="left" height="19px" colspan="2">
+													ITEMS SHIPPED
+													</td>
+												</tr>
+												<tr>
+													<td style="height: 1px;" align="left" height="1px" colspan="2">
+														<table style="line-height:1px; width: 100%;" cellpadding="0px" cellspacing="0px" border="0px" width="100%">
+															<tr>
+																<td width="15px" style="width: 15px;">&nbsp;</td>
+																<td style="border-bottom: 1px solid #dbd6d1;">&nbsp;</td>
+																<td width="16px" style="width: 16px;">&nbsp;</td>
+															</tr>
+														</table>
+													</td>
+												</tr>
+												<tr>
+													<td align="center" style="padding:0 0 10px" colspan="2">
+													<table style="background-color:#ffffff; width: 97%;" cellpadding="0" cellspacing="0" border="0" width="97%">
+														<thead>
+															<tr>
+																<th style="font-family:Arial;font-size:11.4px;padding:16px 3px;letter-spacing:1px;line-height:15px;" align="center" valign="middle">
+%%[
+/* Hide line number																	ORDER LINE #
+*/
+]%%
+																</th>
+																<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px;" align="center" valign="middle">
+																SKU NUMBER
+																</th>
+																<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px;" align="center" valign="middle">
+																UPC
+																</th>
+																<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 151px;" align="center" valign="middle" width="151px">
+																PRODUCT
+																</th>
+																<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 100px;" align="center" valign="middle" width="100px">
+																QTY ORDERED
+																</th>
+																<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 100px;" align="center" valign="middle" width="100px">
+																QTY SHIPPED
+																</th>
+															</tr>
+														</thead>
+														<tbody>
+															%%[
+															set @line_shipping_items = @shipmentItems
+															for @j = 1 to RowCount(@line_shipping_items) do
+															set @shipping_items_row = Row(@line_shipping_items, @j)
+															set @line_number = Field(@shipping_items_row, "line_number")
+UpdateDE("FromSAP_Shipping",2,"ORDER_ID",@order_id,"LINE_NUMBER",@line_number,"consumed",1,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+															set @product_description = Field(@shipping_items_row, "product_description")
+															set @product_color = Field(@shipping_items_row, "product_color")
+															set @product_size = Field(@shipping_items_row, "product_size")
+															set @sku = Field(@shipping_items_row, "sku")
+															set @upc = Field(@shipping_items_row, "upc")
+															set @qty_ordered = Field(@shipping_items_row, "qty_ordered")
+															set @qty_shipped = Field(@shipping_items_row, "qty_shipped")
+															]%%
+															<tr>
+																<td style="font-family:Arial;font-size:11.4px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="top">
+%%[
+/* Hide line number																	<span>%%=v(@line_number)=%%</span>
+*/
+]%%																	</td>
+																<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="top">
+																%%=v(@sku)=%%
+																</td>
+																<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="top">
+																%%=v(@upc)=%%
+																</td>
+																<td style="font-family:Arial;font-size:10px;background-color:#ffffff;color:#252525" align="left" valign="top">
+																<table style="font-family:Arial;font-size:10px;padding:0;margin:0" cellpadding="0" cellspacing="0" valign="top">
+																	<tbody>
+																		<tr>
+																			<td style="text-align:left;font-weight:bold;text-transform:uppercase;text-font-family:Arial;font-size:10px;padding:0;background-color:#ffffff;color:#252525;letter-spacing:1px;line-height:12px">
+																			%%=v(@product_description)=%%
+																			</td>
+																		</tr>
+																		<tr>
+																			<td style="text-align:left;font-weight:normal;font-family:Arial;font-size:10px;padding:0;background-color:#ffffff;color:#000000;letter-spacing:1px;line-height:15px">
+																			%%[ if Length(@product_color) > 0 then ]%% Color:&nbsp;%%=v(@product_color)=%%<br>
+																			 %%[ endif ]%%
+																			%%[ if Length(@product_size) > 0 then ]%% Size:&nbsp;%%=v(@product_size)=%% %%[ endif ]%%
+																			</td>
+																		</tr>
+																	</tbody>
+																</table>
+																</td>
+																<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal" align="center" valign="top">
+																%%=v(@qty_ordered)=%%
+																</td>
+																<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal" align="center" valign="top">
+																%%=v(@qty_shipped)=%%
+																</td>
+															</tr>
+															%%[ if @j != RowCount(@line_shipping_items) then ]%%
+															<tr>
+																<td align="left" height="1px" colspan="6" style="height: 1px;">
+																<table cellpadding="0" cellspacing="0" border="0" width="100%" style="width:100%">
+																	<tr>
+																		<td width="5px" style="width: 5px;">&nbsp;</td>
+																		<td style="border-bottom: 1px solid #dbd6d1;">&nbsp;</td>
+																		<td width="6px" style="width: 6px;" >&nbsp;</td>
+																	</tr>
+																</table>
+																</td>
+															</tr>
+															%%[ endif ]%%
+															<tr>
+																<td>&nbsp;</td>
+															</tr>
+															%%[
+															next @j
+															]%%
+														</tbody>
+													</table>
+													</td>
+												</tr>
+											</table>
+											</td>
+										</tr>
+										<tr>
+											<td>&nbsp;</td>
+										</tr>
+										%%[ next @i ]%%
+										<tr>
+											<td style="font-family:Arial;font-size:14px;line-height:normal;color:#515151;padding:5px 0 0 5px;font-weight:normal;" align="left" valign="top">
+											Reminder: Your account will be charged if we do not receive your return product within <span style="font-weight:bold;text-decoration:underline;">7 Business Days</span>.
+											</td>
+										</tr>
+										<tr>
+											<td>&nbsp;</td>
+										</tr>
+										<tr>
+											<td style="padding:13px 0 27px 0;" align="left" colspan="2">
+
+											</td>
+										</tr>
+										<!--Order Information Items - Start-->
+										<!--Order Information Items - End-->
+									</tbody>
+								</table>
+								</td>
+							</tr>
+								<!--Order Info - End-->
+						</table>
+						</td>
+					</tr>
+					<!--Footer - Start-->
+					<tr>
+						<td style="padding:0;border:none">
+						<table style="border-collapse:collapse;margin:0px;padding:0px;background-color:#eae8e5;width:100%" width="100%" border="0" cellpadding="0" cellspacing="0">
+							<tbody>
+								<tr>
+                  <td style="margin:0;padding:22px 0 0 28px;color:#231f20;line-height:16px;height:125px; width: 125px;" align="left" height="125px" valign="top" width="125px">
+                    <img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/footer-logo2.png" border="0" />
+                  </td>
+									<td style="padding:21px 0 0 70px;color:#454545;line-height:15px;font-size:10.5px;height:125px" align="left" height="125px" valign="top">
+									Contact Information:<br>
+									YETI<br>
+									<a>PO Box 163686</a><br>
+									<a>Austin, TX 78716</a><br>
+                  Phone: <a href="tel:5123949384">512-394-9384</a><br>
+                  <a style="color:#454545;text-decoration:none;font-weight:bold;font-family:Arial;" href="mailto:YETI%20Coolers%20Returns%20%3Cyetireturns@yeti.com%3E?subject=YETI+Customer+Return+Request">yetireturns@yeti.com</a>
+									</td>
+
+                  <td style="margin:0;padding:27px 0 0 0;color:#ffffff;line-height:18px;font-size:11.4px;height:125px;" align="left" height="125px" valign="top">
+                    <a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://www.facebook.com/YetiCoolers?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+                      <img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/fb_logo.png" border="0" />
+                    </a>
+                    <a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://twitter.com/Yeticoolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+                      <img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/twitter_logo.png" border="0" />
+                    </a>
+                                                              <a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://instagram.com/yeticoolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+                      <img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/instagram_logo.png" border="0">
+                    </a>
+                    <a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="http://www.youtube.com/user/YetiVideos?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+                      <img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/youtube_logo.png" border="0" />
+                    </a>
+                    <a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="http://www.pinterest.com/yeticoolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+                      <img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/pintrest_logo.png" border="0" />
+                    </a>
+                    <a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://plus.google.com/+yeticoolers/posts?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+                      <img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/googleplus_logo.png" border="0" />
+                    </a>
+                  </td>
+								</tr>
+							</tbody>
+						</table>
+						</td>
+					</tr>
+					<!--Footer - End-->
+				</tbody>
+			</table>
+			</td>
+		</tr>
+		<tr>
+			<td style="padding:15px 0 20px 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top"><custom name="opencounter" type="tracking">&#169; %%=Datepart(now(),"year")=%% YETI All Rights Reserved</td>
+		</tr>
+		<tr>
+			<td style="margin:0;padding:15px 0 0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top">This email was sent to:  %%emailaddr%% <br>
+			<b>Email Sent By:</b> %%Member_Busname%%<br>
+			%%Member_Addr%% %%Member_City%%, %%Member_State%%, %%Member_PostalCode%%, %%Member_Country%%</td>
+		</tr>
+	</tbody>
+</table>
+</body>
+</html>

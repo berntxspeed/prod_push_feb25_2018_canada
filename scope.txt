@@ -1,0 +1,54 @@
+CANADA Emails to push to prod:
+
+[done]-STD Dealer Order
+[done]-STD Dealer Shipment
+[done]-STD Dealer Invoice
+
+[done]-RMA Dealer Order
+[done]-RMA Dealer Shipment
+[done]-RMA Consumer Order
+[done]-RMA Consumer Shipment
+
+-----------------
+
+US Queries to update:
+
+[done]-STD Dealer Order
+[done]-STD Dealer Shipment
+[done]-STD Dealer Invoice
+
+[done/nochange]-CL Dealer Order
+[done]-CL Dealer Shipment
+[done/nochange]-CL Dealer Invoice
+
+[done]-RMA Dealer Order
+[done]-RMA Dealer Shipment
+[done]-RMA Consumer Order
+[done]-RMA Consumer Shipment
+
+----------------- for each canada email being deployed to prod:
+
+-create the sendable data extension
+-create the sentlog data extension
+-create the sendable query
+-create the sentlog query
+-create the email
+-create the user initiated send definition
+-create the automation
+
+---------------- notes about this deployment:
+
+-for canada queries, let's validate the record type id's on the accounts (sold-to and ship-to are what we expect them to be in the queries)
+-for canada std sentlog queries - it would be good later on to change these to the simple select * from sendableDE queries like RMA uses
+-keep an eye on the shipment emails (us/ca) and how we added the order-by order-id piece
+***unpause canada automations after new fields have been added to FromSAP_Order/Shipment/Invoice data extensions
+-look into us rma dealer shipping email (doesn't have the consumed=0 piece in shipment rows lookup - may be showing too much shipment rows)
+-doing internationalorders@yeti.com as from-email and reply-to for canada consumer rma order/ship
+-consider adding conditional send steps to automations (test in sandbox first)
+-clean up foldering for tracking/sends of dealer tx messages in production
+
+---------------- next steps:
+
+-monday night: SAP deployment, add columns to FromSAP DE's in SFMC
+-wed night: smoke test
+-next monday: go live!

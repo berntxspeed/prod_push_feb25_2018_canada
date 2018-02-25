@@ -1,0 +1,738 @@
+%%[
+	Var @invoice, @address_id, @po, @invoice_date, @status, @due_date, @payment_method,
+	@credit_card, @subtotal, @discounts, @shipping_fee, @handling_fee, @tax, @grand_total,
+	@payments, @invoice_balance, @outside_rep_name, @outside_rep_phone, @outside_rep_email,
+	@inside_rep_name, @inside_rep_phone, @inside_rep_email, @total_before_discounts, @total_disc_shipment,
+
+	@company_name, @address_1, @address_2, @city, @state, @zip, @country,@header_subtotal,@credit_card_number,
+
+	@shipTo_company, @shipTo_address1, @shipTo_address2, @shipTo_city, @shipTo_state, @shipTo_zipcode, @shipTo_country, @shipTo_phone,
+
+	@lines_shipment_data, @shipment_row, @shipment_id, @shipment_address_id, @shipment_packing_slip,
+	@shipment_method, @shipment_date, @shipment_tracking_number_1, @shipment_tracking_link_1,
+	@shipment_tracking_number_2, @shipment_tracking_link_2, @shipment_tracking_number_3, @shipment_tracking_link_3, @shipment_discounts,
+
+	@shipment_line_items, @shipped_items_row, @line_number, @sku, @upc, @description, @color, @size, @price, @qty, @discount, @subtotal,
+
+	@i,@j, @temp, @display_extra_summary, @customer_id
+
+
+  if _MessageContext == "VAWP" or _MessageContext == "Social" or _MessageContext == "FTAF" then
+    set @customer_id = Lookup("SendLog","customer_number","SubID",SubscriberID,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+    set @invoice = Lookup("SendLog","invoice_number","SubID",SubscriberID,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+  ELSE
+    /* FIELDS NEEDED ON SEND LIST */
+    set @customer_id = customer_number
+    set @invoice = invoice_number
+  ENDIF
+
+	set @invoiceRow = Row(LookupRows("FromSAP_Invoice","invoice_number",@invoice),1)
+
+	set @po = Field(@invoiceRow,"po_number")
+	set @invoice_date_value = Field(@invoiceRow,"invoice_date")
+	set @invoice_date = FormatDate(@invoice_date_value,"MM/DD/YYYY")
+	set @status = Field(@invoiceRow,"status")
+	set @due_date_value = Field(@invoiceRow,"due_date")
+	set @due_date = FormatDate(@due_date_value,"MM/DD/YYYY")
+	set @payment_method = Field(@invoiceRow,"payment_method")
+	set @credit_card = Field(@invoiceRow,"credit_card_type")
+	set @credit_card_number = Field(@invoiceRow,"credit_card_number")
+	set @header_subtotal = Field(@invoiceRow,"Subtotal")
+	set @discounts = Field(@invoiceRow,"order_discount")
+	set @shipping_fee = Field(@invoiceRow,"shipping")
+
+	set @handling_fee = Field(@invoiceRow,"handling_fee")
+	set @tax = Field(@invoiceRow,"Tax")
+	set @grand_total = Field(@invoiceRow,"grand_total")
+	set @invoice_balance = Field(@invoiceRow,"balance_due")
+	set @payments = Subtract(@grand_total,@invoice_balance)
+	set @outside_rep_name = Field(@invoiceRow,"outside_rep_name")
+	set @outside_rep_phone = Field(@invoiceRow,"outside_rep_phone")
+	set @outside_rep_email = Field(@invoiceRow,"outside_rep_email")
+	set @inside_rep_name = Field(@invoiceRow,"inside_rep_name")
+	set @inside_rep_phone = Field(@invoiceRow,"inside_rep_phone")
+	set @inside_rep_email = Field(@invoiceRow,"inside_rep_email")
+	set @fob = Field(@invoiceRow,"fob")
+
+	set @company_name = Field(@invoiceRow,"name")
+	set @address_1 = Field(@invoiceRow,"address1")
+	set @address_2 = Field(@invoiceRow,"address2")
+	set @city = Field(@invoiceRow,"city")
+	set @state = Field(@invoiceRow,"state")
+	set @zip = Field(@invoiceRow,"zip_code")
+	set @country = Field(@invoiceRow,"country")
+
+	set @shipTo_company = Field(@invoiceRow,"shipTo_company")
+	set @shipTo_address1 = Field(@invoiceRow,"shipTo_address1")
+	set @shipTo_address2 = Field(@invoiceRow,"shipTo_address2")
+	set @shipTo_city = Field(@invoiceRow,"shipTo_city")
+	set @shipTo_state = Field(@invoiceRow,"shipTo_state")
+	set @shipTo_zipcode = Field(@invoiceRow,"shipTo_zipcode")
+	set @shipTo_country = Field(@invoiceRow,"shipTo_country")
+	set @shipTo_phone = Field(@invoiceRow,"shipTo_phone")
+
+	set @lines_shipment_data = LookupRows("FromSAP_Invoice","invoice_number",@invoice)
+	set @display_extra_summary = TRUE
+]%%
+
+%%[
+var @email_content
+set @email_content = concat("<!DOCTYPE html>
+<html>
+	<head><title>YETI: Invoice #",@invoice,"</title></head>
+	<body>
+		<table style=""border-collapse:collapse;font-family:Arial,Helvetica,Verdana,sans-serif;font-size:11.4px;margin:0px;color:#000000;background:none repeat scroll 0% 0% #cac3b9;border:0px none;padding:20px 0px 0px;width:100%"" width=""100%"" border=""0"" cellpadding=""0"" cellspacing=""0"">
+			<tbody>
+				<tr>
+					<td style=""margin:0;padding:10px 0 0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal"" align=""center"" valign=""top"">To view this email as a web page, click <a href=""",view_email_url,""">here.</a></td>
+				</tr>
+				<tr>
+					<td style=""margin:0;padding:0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal"" align=""center"" valign=""top""><a href=""",view_email_url,""" style=""text-decoration:none;color:#cac3b9;"">",view_email_url,"</a></td>
+				</tr>
+				<tr>
+					<td style=""padding:0;color:#231f20"" align=""center"" valign=""top"">
+						<table style=""border-collapse:collapse;border-radius:11.4px;border:10px solid #d1ccc2;background:none repeat scroll 0% 0% #cac3b9;padding:0px;margin:0px;width:674px"" width=""674px"" cellpadding=""0"" cellspacing=""0"">
+							<tbody>
+								<tr>
+									<td style=""padding:0;color:#231f20;border:none"" align=""center"" valign=""top"">
+										<table style=""border-collapse:collapse;margin:0px;padding:0px;width:674px"" width=""674px"" bgcolor=""#F6F6F6"" cellpadding=""0"" cellspacing=""0"">
+<!--Header Info - Start-->
+											<tbody>
+												<tr>
+													<td style=""padding:0;color:#231f20;line-height:normal;background-color:#00253d;background-image:url('http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-header-bg.jpg');border:0; height: 91px;"" align=""left"" height=""91px"" valign=""top"">
+														<table border=""0"" cellpadding=""0"" cellspacing=""0"">
+															<tbody>
+																<tr>
+																	<td style=""padding:0 0 0 18px;border:0;color:#231f20;line-height:0px; height: 91px; width: 170px;"" align=""left"" height=""91px"" valign=""middle"" width=""170px"">
+																		<a style=""color:#ffffff;font-size:11.4px;font-family:Arial;text-decoration:underline"">
+																			<img src=""http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-logo.png"" border=""0"">
+																		</a>
+																	</td>
+
+																	<td style=""border:0;margin:0px;line-height:normal;color:white;padding:0px; width: 204px; height: 91px;"" align=""center"" height=""91px"" valign=""middle"" width=""204px"">
+																		&nbsp;
+																	</td>
+
+																	<td style=""border:0;margin:0px;line-height:normal;color:white;padding:0px; width: 29px; height: 91px;"" align=""center"" height=""91px"" valign=""middle"" width=""29px"">
+																		<img src=""http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-help.png"" border=""0"">
+																	</td>
+
+																	<td style=""border:0;padding:0 0 0 14px;color:#e4e4e4;line-height:18px;font-size:11.5px;font-family:Arial; height: 91px; width: 240px;"" align=""left"" height=""91px"" valign=""middle"" width=""240px"">
+																		Questions about your order?<br>
+																		Call us at <a href=""tel:512.394.0222"">512.394.0222</a> or email
+																		<a style=""text-decoration:none;color:#f3f3f3;font-weight:bold"" title=""Contact Us by Email"" href=""mailto:YETI%20Coolers%20Customer%20Service%20%3Csales@yeti.com%3E?subject=YETI+Sales"">sales@yeti.com</a><br>
+																		Mon-Fri 8 AM - 5 PM CST
+																	</td>
+																</tr>
+															</tbody>
+														</table>
+													</td>
+												</tr>
+
+<!--Header Info - End-->
+
+<!--Order Info - Start-->
+												<tr>
+													<td style=""font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;padding:0 0 0 18px;font-weight:bold;"" align=""left"" valign=""top"">
+														<table style=""padding:0;border:none;border-collapse:collapse; width: 638px;"" bgcolor=""#F6F6F6"" border=""0"" width=""638px"" cellpadding=""0"" cellspacing=""0"">
+															<tbody>
+																<tr><td></td>&nbsp;</tr>
+																				<tr>
+																					<td style=""text-align:center;font-family:Arial;font-weight:normal;padding:20px 0 20px 0;font-size:24px;color:#515151;line-height:normal;"" colspan=""3"" align=""center"" valign=""top"">
+																						<b>Invoice</b>
+																					</td>
+																				</tr>
+																<tr>
+																	<td>
+																		<table bgcolor=""#F6F6F6"" border=""0"" width=""638px"" cellpadding=""0"" cellspacing=""0"" style=""width: 638px;"">
+																			<tbody>
+																				<tr>
+																					<td valign=""top"" width=""159px"" style=""width: 159px;"">
+																						<table>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:normal;font-size:14px;color:#515151;line-height:normal;"">
+																									<span style=""font-weight:bold;"">Remittance Address</span><br>
+
+YETI<br>
+																									PO Box 843780<br>
+																									Dallas, TX 75284-3780<br>
+																								</td>
+																							</tr>
+																						</table>
+																					</td>
+																					<td width=""159px"" valign=""top"" style=""width: 159px;"">
+																						<table>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:normal;"">
+																									Customer ID: <span style=""font-weight:normal;"">",@customer_id,"</span>
+																								</td>
+																							</tr>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:normal;"">
+																									PO: <span style=""font-weight:normal;"">",@po,"</span>
+																								</td>
+																							</tr>
+																						</table>
+																					</td>
+																					<td width=""159px"" valign=""top"" style=""width: 159px;"">
+																						<table>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:normal;"">
+																									Invoice #: <span style=""font-weight:normal;"">",@invoice,"</span>
+																								</td>
+																							</tr>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:normal;"">
+																									Invoice Date: <span style=""font-weight:normal;"">",@invoice_date,"</span>
+																								</td>
+																							</tr>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:normal;"">")]%%
+																									%%[if @status == ""PAID"" then]%%
+%%[ set @email_content = concat(@email_content,"    Status: <span style=""font-weight:normal;color:#ff0000;font-weight:900;"">",@status,"</span>")]%%
+																									%%[ else ]%%
+%%[ set @email_content = concat(@email_content,"    Status: <span style=""font-weight:normal;"">",@status,"</span>")]%%
+																									%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"</td>
+																							</tr>
+																							<tr>
+																								<td style=""font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:normal;"">
+																									Due Date: <span style=""font-weight:normal;"">",@due_date,"</span>
+																								</td>
+																							</tr>
+																						</table>
+																					</td>
+																				</tr>
+																			</tbody>
+																		</table>
+																	</td>
+																</tr>
+
+																<tr>
+																	<td style=""font-family:Helvetica;font-size:14px;line-height:normal;color:#000000; font-weight:bold;"" align=""left"" valign=""top"">
+																		<table style=""padding:0;border:none;border-collapse:collapse; width: 624px;"" cellpadding=""0"" cellspacing=""0"" bgcolor=""#F6F6F6"" border=""0"" width=""624px"">
+																			<tr>
+																				<td style=""font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;font-weight:bold;"" align=""left"" valign=""top"">
+																					<table style=""padding:0;border:none;border-collapse:collapse; width: 219px;"" cellpadding=""0"" cellspacing=""0"" bgcolor=""#F6F6F6"" border=""0"" width=""219px"">
+																						<tr>
+																							<td style=""padding:15px 0 0 0"" valign=""top"">
+																								<table style=""padding:0;border:none; width: 310px; height: 145px;"" cellpadding=""0"" cellspacing=""0"" border=""0"" width=""310px"" height=""145px"">
+																									<thead>
+																										<tr>
+																											<th style=""font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:11.4px;line-height:16px;margin:0px;color:#000000;padding:15px 0 13px 16px;border:1px solid #dbd6d1;border-bottom:0;background-color:#f4f2f0;text-transform:uppercase; width: 365px; height: 19px;"" align=""left"" height=""19px"" width=""365px"">
+																												Billing Address
+																											</th>
+																										</tr>
+																									</thead>
+																									<tbody>
+																										<tr>
+																											<!--Billing Address - Start-->
+																											<td style=""font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px;border:1px solid #dbd6d1;border-top:0;background-color:#ffffff"" align=""left"" valign=""top"">
+																												",@company_name,"<br>")]%%
+																												%%[ if Length(@address_1) > 0 then ]%%
+%%[ set @email_content = concat(@email_content,"        <a>",@address_1,"</a><br>")]%%
+                                                        %%[ endif ]%%
+																												%%[ if Length(@address_2) > 0 then ]%%
+%%[ set @email_content = concat(@email_content,"        <a>",@address_2,"</a><br>")]%%
+                                                        %%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"        <a>",@city,", ",@state,"&nbsp;",@zip,"</a><br>
+																												<a>",@country,"</a><br>
+																											</td>
+																											<!--Billing Address - End-->
+																										</tr>
+																									</tbody>
+																								</table>
+																							</td>
+																							<td style=""font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;padding:15px 0 0 15px;font-weight:bold; vertical-align: top;"" align=""left"" valign=""top"">
+																								<table style=""padding:0;border:none;border-collapse:collapse"" cellpadding=""0"" cellspacing=""0"" bgcolor=""#F6F6F6"" border=""0"">
+																									<tr>
+																										<td style=""padding:0px;vertical-align: top;"" valign=""top"">
+																											<table style=""padding:0;border:none; width: 310px; height: 145px; vertical-align: top;"" valign=""top"" cellpadding=""0"" cellspacing=""0"" border=""0"" width=""310px"" height=""145px"">
+																												<thead>
+																													<tr>
+																														<th style=""font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:11.4px;line-height:16px;margin:0px;color:#000000;padding:15px 0 13px 16px;border:1px solid #dbd6d1;border-bottom:0;background-color:#f4f2f0;text-transform:uppercase; width: 80px; height: 19px; vertical-align: top;"" valign=""top"" align=""left"" height=""19px"" width=""80px"">
+																															Payment Method
+																														</th>
+																													</tr>
+																												</thead>
+
+																												<tbody>
+																													<tr>
+																														<!--Billing Address - Start-->
+																														<td style=""font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px;border:1px solid #dbd6d1;border-top:0;background-color:#ffffff"" align=""left"" valign=""top"">")]%%
+																															%%[IF NOT EMPTY(@credit_card) THEN]%%
+%%[ set @email_content = concat(@email_content,@credit_card,"<br>")]%%
+%%[ENDIF]%%
+%%[ set @email_content = concat(@email_content, @credit_card_number,"
+																														</td>
+																														<!--Billing Address - End-->
+																													</tr>
+																												</tbody>
+																											</table>
+																										</td>
+																									</tr>
+																								</table>
+																							</td>
+																						</tr>
+																						<tr><td>&nbsp;</td></tr>")]%%
+																						%%[
+
+																							set @shipment_row = Row(@lines_shipment_data, 1)
+																							set @shipment_packing_slip = Field(@shipment_row, "packing_slip")
+																							set @shipment_method = Field(@shipment_row, "shipping_method")
+																							set @shipment_date_value = Field(@shipment_row, "ship_date")
+set @shipment_date = FormatDate(@shipment_date_value,"MM/DD/YYYY")
+																							set @shipment_discounts = Field(@shipment_row, "order_discount")
+set @total_discounts = @shipment_discounts
+
+																							/*set @shipment_tracking_number_1 = Field(@shipment_row, "tracking_number_1")
+set @shipment_tracking_link_1 = Field(@shipment_row, "tracking_link_1")
+set @shipment_tracking_number_2 = Field(@shipment_row, "tracking_number_2")
+set @shipment_tracking_link_2 = Field(@shipment_row, "tracking_link_2")
+set @shipment_tracking_number_3 = Field(@shipment_row, "tracking_number_3")
+set @shipment_tracking_link_3 = Field(@shipment_row, "tracking_link_3")*/
+
+set @shipment_tracking_number = Field(@shipment_row,"tracking_number")
+set @shipment_tracking_link = Concat(Field(@shipment_row,"tracking_link"),@shipment_tracking_number,"&cntry_code=us")
+
+																								set @shipTo_company = Field(@invoiceRow,"shipTo_company")
+set @shipTo_address1 = Field(@invoiceRow,"shipTo_address1")
+set @shipTo_address2 = Field(@invoiceRow,"shipTo_address2")
+set @shipTo_city = Field(@invoiceRow,"shipTo_city")
+set @shipTo_state = Field(@invoiceRow,"shipTo_state")
+set @shipTo_zipcode = Field(@invoiceRow,"shipTo_zipcode")
+set @shipTo_country = Field(@invoiceRow,"shipTo_country")
+
+																						]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""background-color:#ffffff; border:1px solid #dbd6d1;"" colspan=""2"">
+																								<table cellpadding=""0"" cellspacing=""0"" border=""0"" width=""100%"" style=""width: 100%;"">
+																									<tr>
+																										<td style=""font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#f4f2f0;font-size:12px;line-height:16px;color:#000000;padding:15px 0 13px 16px; background-color:#f4f2f0; height: 19px;"" align=""left"" height=""19px"" colspan=""2"">
+																												ITEMS ORDERED
+																										</td>
+																									</tr>
+																									<tr>
+																										<td valign=""top"" width=""220px"" style=""width: 220px;"">
+																											<table cellpadding=""0"" cellspacing=""0"" border=""0"">
+																												<thead>
+																													<tr>
+																														<th colspan=""2"" style=""font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px; height: 19px;"" align=""left"" height=""19px"" >
+																														Shipping Address
+																														</th>
+																													</tr>
+																												</thead>
+																												<tbody>
+																													<tr>
+																														<!--Shipping Address - Start-->
+																														<td style=""font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px;"" align=""left"" valign=""top"">
+																														",@shipTo_company,"<br>
+																														<a>",@shipTo_address1,"</a><br>")]%%
+																														%%[ if Length(@shipTo_address2) > 0 then ]%%
+%%[ set @email_content = concat(@email_content,"            <a>",@shipTo_address2,"</a><br>")]%%
+																														%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"            <a>",@shipTo_city,", ",@shipTo_state,"
+																														",@shipTo_zipcode,"</a><br>
+																														<a>",@shipTo_country,"</a><br>
+																														<span><i>T:</i> ",@shipTo_phone,"</span>
+																														</td>
+																														<!--Shipping Address - End-->
+																													</tr>
+																												</tbody>
+																											</table>
+																										</td>
+																										<td style=""padding-right:1%;font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;font-weight:bold;"" align=""center"" valign=""top"">
+																											<table cellpadding=""0"" cellspacing=""0"" border=""0"" >
+																												<tr>
+																													<td>
+																														<table style=""padding:0;border:none; width: 100%;"" cellpadding=""0"" cellspacing=""0"" border=""0"" width=""100%"">
+																															<thead>
+																																<tr>
+																																	<th colspan=""2"" style=""font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px; height: 19px;"" align=""left"" height=""19px"" >
+																																	Track Your Shipment
+																																	</th>
+																																</tr>
+																															</thead>
+																															<tbody>
+																																<!--Ship Method - Start-->
+																																<tr>
+																																	<td style=""padding:7px 0 13px 16px;"" align=""left"" valign=""top"">
+																																		<table style=""font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;"">")]%%
+																																			%%[ IF Length(@shipment_tracking_number) > 0 THEN ]%%
+%%[ set @email_content = concat(@email_content,"                      <tr>
+																																				<td style=""padding-right:10px;"">Master Tracking Number(s):</td>
+																																				<td style=""text-overflow:visible;""><a href=""",RedirectTo(@shipment_tracking_link),""">",@shipment_tracking_number,"</a></td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""padding-right:10px;"">&nbsp;</td>
+																																				<td align=""left""><a style=""border:0; text-decoration:none;"" href=""",RedirectTo(@shipment_tracking_link),"""><img style=""width:120px;"" width=""120px"" border=""0"" src=""http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/track-shipment.png"" /></a></td>
+																																			</tr>")]%%
+																																			%%[ ENDIF ]%%
+																																			%%[ if Length(@shipment_tracking_number_2) > 0 then ]%%
+%%[ set @email_content = concat(@email_content,"                      <tr>
+																																				<td style=""line-height:8px; padding-right:10px;"">&nbsp;</td>
+																																				<td style=""line-height:8px"">&nbsp;</td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""padding-right:10px;"">&nbsp;</td>
+																																				<td style=""text-overflow:visible;""><a href=""",RedirectTo(@shipment_tracking_link_2),""">",@shipment_tracking_number_2,"</a></td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""padding-right:10px;"">&nbsp;</td>
+																																				<td align=""left""><a style=""border:0; text-decoration:none;"" href=""",RedirectTo(@shipment_tracking_link_2),"""><img style=""width:120px;"" width=""120px"" border=""0"" src=""http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/track-shipment.png"" /></a></td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""line-height:8px; padding-right:10px;"">&nbsp;</td>
+																																				<td style=""line-height:8px"">&nbsp;</td>
+																																			</tr>")]%%
+																																			%%[ endif ]%%
+																																			%%[ if Length(@shipment_tracking_number_3) > 0 then ]%%
+%%[ set @email_content = concat(@email_content,"                      <tr>
+																																				<td style=""padding-right:10px;"">&nbsp;</td>
+																																				<td style=""text-overflow:visible;""><a href=""",RedirectTo(@shipment_tracking_link_3),""">",@shipment_tracking_number_3,"</a></td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""padding-right:10px;"">&nbsp;</td>
+																																				<td align=""left""><a style=""border:0; text-decoration:none;"" href=""",RedirectTo(@shipment_tracking_link_3),"""><img style=""width:120px;"" width=""120px"" border=""0"" src=""http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/track-shipment.png"" /></a></td>
+																																			</tr>")]%%
+																																			%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"                      <tr>
+																																				<td style=""padding-right:10px;"">Packing Slip #:</td>
+																																				<td>",@shipment_packing_slip,"</td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""padding-right:10px;"">Shipping Method:</td>
+																																				<td>",@shipment_method,"</td>
+																																			</tr>
+																																			<tr>
+																																				<td style=""padding-right:10px;"">Shipping Date:</td>
+																																				<td>",@shipment_date,"</td>
+																																			</tr>
+																																		</table>
+																																	</td>
+																																</tr>
+																																<!--Ship Method - End-->
+																															</tbody>
+																														</table>
+																													</td>
+																												</tr>
+																											</table>
+																										</td>
+																									</tr>
+																									<tr>
+																										<td style=""font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 2px 16px; height: 19px;"" align=""left"" height=""19px"" colspan=""2"">
+																											ITEMS SHIPPED
+																										</td>
+																									</tr>
+																									<tr>
+																										<td style=""height: 1px;"" align=""left"" height=""1px"" colspan=""2"">
+																											<table style=""line-height:1px; width: 100%;"" cellpadding=""0"" cellspacing=""0"" border=""0"" width=""100%"">
+																												<tr>
+																													<td width=""15px"" style=""width: 15px;"">&nbsp;</td>
+																													<td style=""border-bottom: 1px solid #dbd6d1;"">&nbsp;</td>
+																													<td width=""16px"" style=""width: 16px;"">&nbsp;</td>
+																												</tr>
+																											</table>
+																										</td>
+																									</tr>")]%%
+																									%%[
+																										set @total_discounts = 0
+																										set @shipment_line_items = LookupRows("FromSAP_Invoice","invoice_number",@invoice)
+																										for @j = 1 to RowCount(@shipment_line_items) do
+																											set @shipped_item_row = Row(@shipment_line_items, @j)
+																											set @total_disc_shipment = Field(@shipped_item_row, "line_discount_price")
+																											set @total_discounts = Add(@total_discounts, @total_disc_shipment)
+																										next @j
+																									]%%
+%%[ set @email_content = concat(@email_content,"  <tr>
+																										<td align=""center"" style=""padding:0 0 10px"" colspan=""2"">
+																											<table style=""background-color:#ffffff; width: 97%;"" cellpadding=""0"" cellspacing=""0"" border=""0"" width=""97%"">
+																												<thead>
+																													<tr>
+																														<th style=""font-size:11.4px;padding:16px 3px;line-height:15px;"" align=""center"" valign=""middle"">
+																														</th>
+																														<th style=""font-size:11.4px;padding:16px 0;line-height:15px;"" align=""center"" valign=""middle"">
+																															SKU Number
+																														</th>
+
+<th style=""font-size:11.4px;padding:16px 0;line-height:15px;"" align=""center"" valign=""middle"">
+																															UPC
+																														</th>
+																													<th style=""font-size:11.4px;padding:16px 0;line-height:15px; width:125px;"" width=""125px"" align=""center"" valign=""middle"">
+																															Product
+																														</th>
+																														<th style=""font-size:11.4px;padding:16px 0;line-height:15px"" align=""center"" valign=""middle"">
+																															Price
+																														</th>
+																														<th style=""font-size:11.4px;padding:16px 0;line-height:15px"" align=""center"" valign=""middle"">
+																															&nbsp;&nbsp;QTY&nbsp;&nbsp;
+																														</th>")]%%
+																														%%[ if @total_discounts > 0 then ]%%
+%%[ set @email_content = concat(@email_content,"            <th style=""font-size:11.4px;padding:16px 0;line-height:15px"" align=""center"" valign=""middle"">
+																															Discount
+																														</th>")]%%
+																														%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"            <th style=""font-size:11.4px;padding:16px 0;line-height:15px"" align=""center"" valign=""middle"">
+																															Subtotal
+																														</th>
+																													</tr>
+																												</thead>
+																												<tbody>")]%%
+																													%%[
+																														set @shipment_line_items = LookupRows("FromSAP_Invoice","invoice_number",@invoice)
+                                                          ]%%
+																													%%[ for @i = 1 to RowCount(@shipment_line_items) do ]%%
+                                                              %%[
+                                                              set @shipped_items_row = Row(@shipment_line_items, @i)
+																															set @line_number = Field(@shipped_items_row, "line_number")
+                                                              UpdateDE("FromSAP_Invoice",2,"invoice_number",@invoice,"LINE_NUMBER",@line_number,"consumed",1)
+																															set @sku = Field(@shipped_items_row, "sku")
+																															set @upc = Field(@shipped_items_row, "upc")
+																															set @description = Field(@shipped_items_row, "product_description")
+																															set @color = Field(@shipped_items_row, "product_color")
+																															set @size = Field(@shipped_items_row, "product_size")
+																															set @price = Field(@shipped_items_row, "price")
+																															set @qty = Field(@shipped_items_row, "qty_ordered")
+																															set @discount = Field(@shipped_items_row, "line_discount_price")
+																															set @subtotal = Field(@shipped_items_row, "subtotal")
+
+                                                              set @line_subtotal = Field(@shipped_items_row, "line_subtotal")
+
+																									            ]%%
+%%[set @email_content = concat(@email_content,"          <tr>
+																														<td style=""font-family:Arial;font-size:11.4px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal;"" align=""center"" valign=""top"">
+																												    </td>
+																														<td style=""font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal;"" align=""center"" valign=""top"">
+																															",@sku,"
+																														</td>
+
+                                                            <td style=""font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal;"" align=""center"" valign=""top"">
+																															",@upc,"
+																														</td>
+																														<td style=""font-family:Arial;font-size:10px;background-color:#ffffff;color:#252525;width:125px;"" width=""125px"" align=""left"" valign=""top"">
+																															<table style=""font-family:Arial;font-size:10px;padding:0;margin:0"" cellpadding=""0"" cellspacing=""0"" valign=""top"">
+																																<tbody>
+																																	<tr>
+																																		<td style=""text-align:left;font-weight:bold;text-transform:uppercase;text-font-family:Arial;font-size:10px;padding:0;background-color:#ffffff;color:#252525;line-height:12px"">
+																																		",@description,"
+																																		</td>
+																																	</tr>
+																																	<tr>
+																																		<td style=""text-align:left;font-weight:normal;font-family:Arial;font-size:10px;padding:0;background-color:#ffffff;color:#000000;line-height:15px"">
+")
+																																		if Length(@color) > 0 then
+set @email_content = concat(@email_content,"                    Color:&nbsp;",@color,"<br>")
+																																		endif
+																																		if Length(@size) > 0 then
+set @email_content = concat(@email_content,"                    Size:&nbsp;",@size)
+                                                                    endif
+set @email_content = concat(@email_content,"                    </td>
+																																	</tr>
+																																</tbody>
+																															</table>
+																														</td>
+																														<td style=""font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal"" align=""center"" valign=""top"">
+																															",FormatCurrency(@price,"en-US"),"
+																														</td>
+																														<td style=""font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal"" align=""center"" valign=""top"">
+																															",@qty,"
+																														</td>")
+																														if @total_discounts > 0 then
+set @email_content = concat(@email_content,"            <td style=""font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal"" align=""center"" valign=""top"">
+																															",FormatCurrency(@discount,"en-US"),"
+																														</td>")
+																														 endif
+set @email_content = concat(@email_content,"            <td style=""font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;font-weight:normal"" align=""center"" valign=""top"">
+																															",FormatCurrency(@line_subtotal,"en-US"),"
+																														</td>
+																													</tr>
+																													<tr>
+																														<td align=""left"" height=""1px"" colspan=""8"" style=""height: 1px;"">
+																															<table cellpadding=""0"" cellspacing=""0"" border=""0"" width=""100%"" style=""width: 100%;"">
+																																<tr>
+																																	<td width=""15px"" style=""width: 15px;"">&nbsp;</td>
+																																	<td style=""border-bottom: 1px solid #dbd6d1;"">&nbsp;</td>
+																																	<td width=""16px"" style=""width: 16px;"">&nbsp;</td>
+																																</tr>
+																															</table>
+																														</td>
+																													</tr>
+																													<tr>
+																														<td>&nbsp;</td>
+																													</tr>
+                                                          ")]%%
+                                                          %%[ next @i ]%%
+																													%%[if @total_discounts > 0 then]%%
+%%[ set @email_content = concat(@email_content,"          <tr>
+																														<td colspan=""7"" style=""padding:5px 0 5px; 0;background-color:#ffffff;color:#000000;"" align=""right"" valign=""middle"">
+																															<font style=""font-family:Arial;font-size:10px;font-weight:normal;"">Total product discounts on this order:&nbsp;&nbsp;",FormatCurrency(@shipment_discounts,"en-US"),"</font>
+																														</td>
+																														<td colspan=""1"" style=""font-family:Arial;font-size:10px;padding:5px 0 5px 0;background-color:#ffffff;color:#000000;font-weight:normal;"" align=""center"" valign=""middle"">
+																															&nbsp;
+																														</td>
+																													</tr>")]%%
+																													%%[endif]%%
+%%[ set @email_content = concat(@email_content,"          </tbody>
+																											</table>
+																										</td>
+																									</tr>
+																								</table>
+																							</td>
+																						</tr>
+																						<tr><td>&nbsp;</td></tr>")]%%
+
+%%[		set @order_discounts = Field(@invoiceRow, "order_discount")
+		set @total_before_discounts = @subtotal
+		set @subtotal_tax = Subtract(@grand_total,@order_discounts)
+		set @subtotal = Subtract(@total_before_discounts,@order_discounts)]%%
+
+%%[ set @email_content = concat(@email_content,"</table>
+                                        </td>
+																			</tr>
+																		</table>
+																	</td>
+																</tr>
+																<tr>
+																	<td style=""font-family:Helvetica;font-size:14px;color:#000000; font-weight:bold; padding-bottom:10px;"" align=""center"" valign=""top"">
+																		<table cellpadding=""0"" cellspacing=""0"" bgcolor=""#F6F6F6"" border=""0"" width=""638px"" style=""width: 638px;"">
+																			<tr>
+																				<!--Promo - Start-->
+																				<td  align=""left"" valign=""top"">
+																					<!--<custom type=""content"" name=""More to Consider"">-->
+																					&nbsp;
+																				</td>
+																				<td width=""25px"" valign=""top"" style=""width: 25px;"">
+																					&nbsp;
+																				</td>
+																				<!--Promo - End-->
+																				<td style=""font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:12px;line-height:16px;color:#000000; width: 250px; "" valign=""top"" align=""right"" width=""250px"">
+																					<table style=""background-color:#def9ff;""cellpadding=""0"" cellspacing=""0"" border=""0"">
+																						<tr>
+																							<td colspan=""2"" align=""right"" style=""text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:11.4px;line-height:19px;color:#000000;padding:11px 10px 0 0;text-transform:uppercase; width: 255px;"" width=""255px"">
+																								Order Summary
+																							</td>
+																						</tr>")]%%
+																						%%[if @total_before_discounts > 0 and @total_discounts > 0 then]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">Total Before Discount:</td>
+																							<td style=""padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">",FormatCurrency(@total_before_discounts,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[ endif ]%%
+																						%%[if @discounts != 0 then]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">Discounts:</td>
+																							<td style=""padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">-",FormatCurrency(@discounts,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">Subtotal:</td>
+																							<td style=""padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">",FormatCurrency(@subtotal,"en-US"),"</td>
+																						</tr>
+																						<tr>
+																							<td style=""padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">Shipping:</td>
+																							<td style=""padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">",FormatCurrency(@shipping_fee,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[if @handling_fee > 0 then]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">Handling Fee:</td>
+																							<td style=""padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">",FormatCurrency(@handling_fee,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:7px 0 11px 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">Tax:</td>
+																							<td style=""padding:7px 10px 11px 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;"">",FormatCurrency(@tax,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[if @display_extra_summary then]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:11px 0 0 0;background-color:#003b61;text-transform:uppercase;text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:15px;color:#ffffff;"">GRAND TOTAL:</td>
+																							<td style=""padding:11px 10px 0 0;text-align:right;background-color:#003b61;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:19px;color:#ffffff;"">",FormatCurrency(@grand_total,"en-US"),"</td>
+																						</tr>
+																						<tr>
+																							<td style=""padding:7px 0 0 0;background-color:#003b61;text-transform:uppercase;text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:15px;color:#ffffff;"">PAYMENTS:</td>
+																							<td style=""padding:7px 10px 0 0;text-align:right;background-color:#003b61;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:19px;color:#ffffff;"">",FormatCurrency(@payments,"en-US"),"</td>
+																						</tr>
+																						<tr>
+																							<td style=""padding:7px 0 11px 0;background-color:#003b61;text-transform:uppercase;text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:15px;color:#ffffff;"">INVOICE BALANCE:</td>
+																							<td style=""padding:7px 10px 11px 0;text-align:right;background-color:#003b61;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:19px;color:#ffffff;"">",FormatCurrency(@invoice_balance,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[ else ]%%
+%%[ set @email_content = concat(@email_content,"<tr>
+																							<td style=""padding:14px 0 14px 0;background-color:#003b61;text-transform:uppercase;text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:15px;color:#ffffff;"">GRAND TOTAL:</td>
+																							<td style=""padding:14px 10px 14px 0;text-align:right;background-color:#003b61;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:19px;color:#ffffff;"">",FormatCurrency(@grand_total,"en-US"),"</td>
+																						</tr>")]%%
+																						%%[ endif ]%%
+%%[ set @email_content = concat(@email_content,"</table>
+																				</td>
+																			</tr>
+																		</table>
+																	</td>
+																</tr>
+															</tbody>
+														</table>
+													</td>
+												</tr>
+<!--Order Info - End-->
+											</tbody>
+										</table>
+									</td>
+								</tr>
+<!--Footer - Start-->
+								<tr>
+									<td style=""padding:0;border:none"">
+										<table style=""border-collapse:collapse;margin:0px;padding:0px;background-color:#eae8e5;width:100%"" width=""100%"" border=""0"" cellpadding=""0"" cellspacing=""0"">
+											<tbody>
+												<tr>
+													<td style=""padding:21px 0 0 70px;color:#454545;line-height:15px;font-size:10.5px;height:125px"" align=""left"" height=""125px"" valign=""top"">
+														Contact Information:<br>
+
+														Phone: <a href=""tel:512.394.9384"">512.394.0222</a><br>
+														<a style=""color:#454545;text-decoration:none;font-weight:bold;font-family:Arial;"" href=""mailto:YETI%20Sales%20%3Csales@yeti.com%3E?subject=Sales"">sales@yeti.com</a>
+													</td>
+
+													<td style=""padding:21px 0px 0px 170px;color:#454545;line-height:15px;font-size:10.5px;height:125px;"" align=""left"" height=""125px"" valign=""top"">
+														Contact YETI:<br>
+														",@outside_rep_name,"<br>
+														",@outside_rep_phone,"<br>
+														",@outside_rep_email,"<br><br>
+
+														",@inside_rep_name,"<br>
+														",@inside_rep_phone,"<br>
+														",@inside_rep_email,"<br><br>
+
+													</td>
+												</tr>
+											</tbody>
+										</table>
+									</td>
+								</tr>
+<!--Footer - End-->
+							</tbody>
+						</table>
+					</td>
+				</tr>
+				<tr>
+					<td style=""padding:15px 0 20px 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal"" align=""center"" valign=""top""><custom name=""opencounter"" type=""tracking"">&#169; ",Datepart(now(),"year")," YETI All Rights Reserved</td>
+				</tr>
+				<tr>
+					<td style=""margin:0;padding:15px 0 0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal"" align=""center"" valign=""top"">This email was sent to:  ",emailaddr," <br><b>Email Sent By:</b> ",Member_Busname,"<br>",Member_Addr," ",Member_City,", ",Member_State,", ",Member_PostalCode,", ",Member_Country,"</td>
+				</tr>
+			</tbody>
+		</table>
+	</body>
+</html>")]%%
+
+%%[
+Var @callStatus, @pdfNameInFTP
+SET @pdfNameInFTP = Concat("STD_DLR_Invoice_",@invoice,"___cust",@customer_id,"__packslip",@shipment_packing_slip,'.pdf')
+
+/* We need to remove any spaces from the filename because it doesn't work with the call we're making to generate the PDF*/
+set @pdfNameInFTP = Replace(@pdfNameInFTP,' ','_')
+
+var @http_status
+set @http_status = HTTPPost(concat("http://pdfgenprod.yeti.com/pdf/", @pdfNameInFTP), "text/html", @email_content, @callStatus)
+/*set @http_status = HTTPPost(concat("http://yeti-pdf-generator.herokuapp.com/pdf/", @pdfNameInFTP), "text/html", @email_content, @callStatus)*/
+
+]%%
+
+%%=v(@email_content)=%%
+%%=AttachFile("FTP",CONCAT("generated_pdf/", @pdfNameInFTP))=%%

@@ -1,0 +1,716 @@
+%%[
+	if _MessageContext == "VAWP" or _MessageContext == "Social" or _MessageContext == "FTAF" then
+		set @order_id = Lookup("SendLog","order_id","SubID",SubscriberID,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+		set @customer_id = Lookup("SendLog","customer_id","SubID",SubscriberID,"JobID",JobID,"BatchID",_JobSubscriberBatchID)
+	ELSE
+		/* FIELDS NEEDED ON SEND LIST */
+		set @order_id = order_id
+		set @customer_id = customer_id
+	ENDIF
+
+	/* GRAB ALL ORDER ROWS RELEVANT TO THIS SEND */
+	set @order_rows= LookupRows("FromSAP_Order", "order_id", @order_id)
+
+
+	/* Assumption: Some fields regarding billing and address are the same across all rows for an order confirmation. We just grab row 1 to obtain that information before any looping is necessary. */
+	set @order_first_row= Row(@order_rows, 1)
+
+
+	/* STATIC FIELDS */
+		set @po_number = Field(@order_first_row, "po_number")
+		set @date_ordered = Field(@order_first_row, "date_ordered")
+		set @need_by_date = Field(@order_first_row,"need_by_date")
+		set @billing_company = Field(@order_first_row, "billing_company")
+		set @billing_name = Field(@order_first_row, "billing_name")
+		set @billing_address_1 = Field(@order_first_row, "billing_address_1")
+		set @billing_address_2 = Field(@order_first_row, "billing_address_2")
+		set @billing_city = Field(@order_first_row, "billing_city")
+		set @billing_state = Field(@order_first_row, "billing_state")
+		set @billing_zip_code = Field(@order_first_row, "billing_zip_code")
+		set @billing_country = Field(@order_first_row, "billing_country")
+		set @payment_method = Field(@order_first_row, "payment_method")
+		set @credit_card_type = Field(@order_first_row, "credit_card_type")
+		set @credit_card_number = Field(@order_first_row, "credit_card_number")
+
+		set @subtotal = Field(@order_first_row, "subtotal")
+		set @handling_fee = Field(@order_first_row, "handling_fee")
+		set @grand_total = Field(@order_first_row, "grand_total")
+		set @shipping = Field(@order_first_row, "shipping")
+		set @tax = Field(@order_first_row, "tax")
+		set @outside_rep_name = Field(@order_first_row, "outside_rep_name")
+		set @outside_rep_phone = Field(@order_first_row, "outside_rep_phone")
+		set @outside_rep_email = Field(@order_first_row, "outside_rep_email")
+		set @inside_rep_name = Field(@order_first_row, "inside_rep_name")
+		set @inside_rep_phone = Field(@order_first_row, "inside_rep_phone")
+		set @inside_rep_email = Field(@order_first_row, "inside_rep_email")
+		set @discounts =  Field(@order_first_row, "order_discount")
+		set @total_discounts = @discounts
+		/* USED TO BE LOOPED SHIPMENT INFORMATION. ASSUMING STATIC NOW. */
+			set @shipping_company = Field(@order_first_row, "shipping_company")
+			set @shipping_method = Field(@order_first_row, "Fob")
+			set @shipping_address_1 = Field(@order_first_row, "shipping_address_1")
+			set @shipping_address_2 = Field(@order_first_row, "shipping_address_2")
+			set @shipping_city =  Field(@order_first_row, "shipping_city")
+			set @shipping_state = Field(@order_first_row, "shipping_state")
+			set @shipping_zip_code = Field(@order_first_row, "shipping_zip_code")
+			set @shipping_country = Field(@order_first_row, "shipping_country")
+			set @shipping_phone = Field(@order_first_row, "shipping_phone")
+
+			/* WAS OUTPUT IN THE SHIPPING SECTION WITHOUT LOOP VALUE. ASSUMING STATIC NOW. */
+				SET @fob = Field(@order_first_row, "fob")
+
+	/* FIELD MAPPINGS IN QUESTION. MAY NEED TO REASSIGN WHERE VALUES ARE PULLED FROM OR CALCULATE NEW VALUES */
+		set @order_discounts = Field(@order_first_row, "order_discount")
+		set @total_before_discounts = @subtotal
+		set @subtotal_tax = Subtract(@grand_total,@order_discounts)
+		set @subtotal = Subtract(@total_before_discounts,@order_discounts)
+
+	/* MISSING OR PREVIOUSLY USED FIELDS NOT IN THE CURRENT DATA EXTENSION */
+		/* set @billing_phone = Field(@order_first_row, "billing_phone") */
+		/* billing phone not included in html. not needed. */
+
+		/* set @outside_rep = Field(@order_first_row, "outside_rep") */
+		/* set @inside_rep = Field(@order_first_row, "inside_rep") */
+
+	/* UNSURE OF THE USE CASE FOR THE FIELDS AT THIS TIME */
+		/* LATER IN THE EMAIL THIS IS REFERENCED DURING ITEM ROW OUTPUT */
+		/* IF IT WERE TRUE IT WOULD OUTPUT THE ESTIMATED SHIP DATE */
+		/* YET IT IS STATIC HERE AND SEEMS TO HAVE NO USE ON THIS EMAIL */
+		Set @estimate = false
+		/* @display_total_discounts = true */
+
+
+	/* ASSUMED IRRELEVANT BECAUSE DATA COMES FROM ONE DATA EXTENSION. */
+	/* MAY NEED TO CALCULATE */
+		/* set @shipment_lines = LookupRows("STD Dealer - Order Shipment Data Extension","order_id",@order_id) */
+
+	set @rma_upgrade_fee = Field(@order_first_row, "rma_upgrade_fee")
+        IF SUBSTRING(@rma_upgrade_fee, LENGTH(@rma_upgrade_fee), 1) == '-' THEN
+		SET @rma_upgrade_fee = CONCAT("-", SUBSTRING(@rma_upgrade_fee, 1, SUBTRACT(LENGTH(@rma_upgrade_fee), 1)))
+        ENDIF
+        IF @rma_upgrade_fee == "0 " THEN
+		SET @rma_upgrade_fee = ""
+	ENDIF
+
+
+]%%
+
+<!DOCTYPE html>
+<html>
+	<head><title>Consumer Order</title></head>
+	<body>
+		<table style="border-collapse:collapse;font-family:Arial,Helvetica,Verdana,sans-serif;font-size:11.4px;color:#000000;background:none repeat scroll 0% 0% #cac3b9;border:0px none;padding:20px 0px 0px;width:100%" width="100%" cellpadding="0" cellspacing="0" border="0">
+			<tr>
+				<td style="margin:0;padding:10px 0 0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top">To view this email as a web page, click <a href="%%view_email_url%%">here.</a></td>
+			</tr>
+			<tr>
+				<td style="margin:0;padding:0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top"><a href="%%view_email_url%%" style="text-decoration:none;color:#cac3b9;">%%view_email_url%%</a></td>
+			</tr>
+			<tr>
+				<td style="padding:0;color:#231f20" align="center" valign="top">
+					<table style="border-collapse:collapse;border-radius:11.4px;border:10px solid #d1ccc2;background:none repeat scroll 0% 0% #cac3b9;padding:0px; width: 674px"	width="674px" cellpadding="0" cellspacing="0">
+						<tr>
+							<td style="padding:0;color:#231f20;border:none" align="center" valign="top">
+								<table style="border-collapse:collapse;padding:0px; width: 674px" width="674px" cellpadding="0" cellspacing="0" bgcolor="#F6F6F6">
+<!--Header Info - Start-->
+									<tr>
+										<td style="padding:0;color:#231f20;line-height:normal;background-color:#00253d;background-image:url('http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-header-bg.jpg');border:0; height: 91px;" align="left" height="91px" valign="top">
+											<table cellpadding="0" cellspacing="0" border="0">
+												<tr>
+													<td style="padding:0 0 0 18px;border:0;color:#231f20;line-height:0px; height:91px; width:170px;" align="left" height="91px" valign="middle" width="170px">
+														<a style="color:#ffffff;font-size:11.4px;font-family:Arial;text-decoration:underline">
+															<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-logo.png" border="0" />
+														</a>
+													</td>
+													<td style="border:0;line-height:normal;color:white;padding:0px; width: 204px; height: 91px;" align="center" height="91px" valign="middle" width="204px">
+														&nbsp;
+													</td>
+
+													<td style="border:0;line-height:normal;color:white;padding:0px; width: 29px; height: 91px;" align="center" height="91px" valign="middle" width="29px">
+														<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/yeti-help.png" border="0" />
+													</td>
+
+													<td style="border:0;padding:0 0 0 14px;color:#e4e4e4;line-height:18px;font-size:11.5px;font-family:Arial; height: 91px; width: 240px" align="left" height="91px" valign="middle" width="240px">
+														Questions about your order?<br>
+                            Call us at <a href="tel:5123949384">512.394.9384</a> or email
+														<a style="text-decoration:none;color:#f3f3f3;font-weight:bold" title="Contact Us by Email" href="mailto:YETI%20Coolers%20Returns%20%3Cinternationalorders@yeti.com%3E?subject=YETI+Customer+Service+Request" style="color:#515151;font-weight:bold">internationalorders@yeti.com</a><br>
+														Mon-Fri 8 AM - 5 PM CST
+													</td>
+												</tr>
+											</table>
+										</td>
+									</tr>
+                  <tr>
+										<td style="color:#231f20; height: 44px;" align="center" height="44px" valign="middle">
+											<table style="border-collapse:collapse;margin:0;padding:0;color:#231f20;line-height:0; width: 100%" cellpadding="0" cellspacing="0" width="100%">
+												<tr>
+													<td align="center" height="44px" width="16.666%" valign="middle" style="height: 44px; width:16.666%">
+														<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Coolers" href="http://yeti.com/coolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+															<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_01.gif" border="0" />
+														</a>
+													</td>
+
+													<td align="center" valign="middle">
+														<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Parts &amp;Accessories" href="http://yeti.com/drinkware/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+															<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_02.gif" border="0" />
+														</a>
+													</td>
+
+													<td align="center" valign="middle">
+														<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Accessories" href="http://yeti.com/accessories/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+															<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_03.gif" border="0" />
+														</a>
+													</td>
+
+													<td align="center" valign="middle">
+														<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;" title="Gear" href="http://yeti.com/apparel-gear/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+															<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_04.gif" border="0" />
+														</a>
+													</td>
+													<td align="center" valign="middle">
+														<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:underline;line-height:0px" title="Field Notes" href="http://yeti.com/pages/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+															<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_05.gif" />
+														</a>
+													</td>
+													<td align="center" valign="middle">
+														<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:underline;line-height:0px" title="About YETI" href="http://yeti.com/about-yeti/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+															<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/YETI-Consumer-Header-NewSlices_06.gif" />
+														</a>
+													</td>
+												</tr>
+											</table>
+										</td>
+									</tr>
+
+<!--Header Info - End-->
+
+<!--Order Info - Start-->
+									<tr>
+										<td style="font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;padding:0 0 0 18px;font-weight:bold;" align="left" valign="top">
+											<table style="padding:0;border:none;border-collapse:collapse; width: 638px;" cellpadding="0" cellspacing="0" bgcolor="#F6F6F6" border="0" width="638px">
+												<tbody>
+                          <tr>
+														<td style="text-align:center;font-family:Arial;font-size:17px;line-height:normal;color:#515151;padding:20px 0 0 5px;font-weight:normal;border-top:1px solid #d8d8d8" align="left" valign="top">
+															<b>Return Order Confirmation</b>
+														</td>
+													</tr>
+													<tr>
+														<td style="font-family:Arial;font-size:14px;line-height:normal;color:#515151;padding:20px 0 0 5px;font-weight:normal;" align="left" valign="top">
+															The below order confirmation is in response to your Return Material Authorization request. We’ll send you a confirmation email with tracking information once your order has shipped.
+															<br><br>Please see your RMA order details below.
+														</td>
+													</tr>
+
+													<tr>
+														<td>
+															<table>
+																<tr>
+																	<td width="270px" style="width:270px; font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:24px; padding:22px 0 14px 0;" align="left" valign="top">
+																		<!--Order Info - Start-->
+																		Sales Order #: <span style="font-weight:normal;">%%=v(@order_id)=%%</span><br>
+																		Customer ID: <span style="font-weight:normal;">%%=v(@customer_id)=%%</span><br>
+																		PO: <span style="font-weight:normal;">%%=v(@po_number)=%%</span>
+																	</td>
+																	<td style="margin-left:10px;font-family:Arial;font-weight:bold;font-size:14px;color:#515151;line-height:24px; padding:22px 0 14px 0;" align="left" valign="top">
+																		Date Ordered: <span style="text-transform:none;font-weight:normal;">%%=FormatDate(@date_ordered, "MMMM DD, yyyy")=%%</span><br>
+																		Need By Date: <span style="text-transform:none;font-weight:normal;">%%=FormatDate(@need_by_date, "MMMM DD, yyyy")=%%</span>
+																	</td>
+																	<!--Order Info - End-->
+																</tr>
+															</table>
+														</td>
+													</tr>
+													<tr>
+														<td style="font-family:Helvetica;font-size:14px;line-height:normal;color:#000000; font-weight:bold;" align="left" valign="top">
+															<table style="padding:0;border:none;border-collapse:collapse; width: 624px;" cellpadding="0" cellspacing="0" bgcolor="#F6F6F6" border="0" width="624px">
+																<tr>
+																	<td style="font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;font-weight:bold;" align="left" valign="top">
+																		<table style="padding:0;border:none;border-collapse:collapse; width: 219px" cellpadding="0" cellspacing="0" bgcolor="#F6F6F6" border="0" width="219px">
+																			<tr>
+																				<td style="padding:15px 0 0 0">
+																					<table style="padding:0;border:none; width: 310px" cellpadding="0" cellspacing="0" border="0" width="310px">
+																						<thead>
+																							<tr>
+																								<th style="font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px;border:1px solid #dbd6d1;border-bottom:0;background-color:#f4f2f0;letter-spacing:1px;text-transform:uppercase; width: 365px; height: 19px;" align="left" height="19px" width="365px">
+																									Billing Address
+																								</th>
+																							</tr>
+																						</thead>
+
+																						<tbody>
+																							<tr>
+																								<!--Billing Address - Start-->
+																								<td style="font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px;border:1px solid #dbd6d1;border-top:0;background-color:#ffffff" align="left" valign="top">
+																									%%=v(@billing_name)=%%<br>
+																									<a>%%=v(@billing_address_1)=%%</a>
+
+%%[ if not empty(@billing_address_2) then ]%%
+																									<br><a>%%=v(@billing_address_2)=%%</a>
+																									%%[ endif ]%%
+																									<br><a>%%=v(@billing_city)=%%, %%=v(@billing_state)=%% %%=v(@billing_zip_code)=%%</a><br>
+																									<a>%%=v(@billing_country)=%%</a><br>
+																								</td>
+																								<!--Billing Address - End-->
+																							</tr>
+																						</tbody>
+																					</table>
+																				</td>
+																			</tr>
+																		</table>
+																	</td>
+
+																	<td style="font-family:Helvetica;font-size:14px;line-height:normal;color:#000000;padding:0 0 0 18px;font-weight:bold;" align="left" valign="top">
+																		<table style="padding:0;border:none;border-collapse:collapse; width: 147px;" cellpadding="0" cellspacing="0" bgcolor="#F6F6F6" border="0" width="147px">
+																			<!-- removed payment method section for rma -->
+
+																		</table>
+																	</td>
+																</tr>
+
+															</table>
+														</td>
+													</tr>
+<!-- SHIPMENT LOOP HTML USED TO BE HERE -->
+<!-- (BEGIN) -->
+													<tr><td>&nbsp;</td></tr>
+													<tr>
+														<td style="background-color:#ffffff; border:1px solid #dbd6d1;">
+															<table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%;">
+																<tr>
+																	<td style="font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#f4f2f0;font-size:12px;line-height:16px;color:#000000;padding:15px 0 13px 16px; background-color:#f4f2f0;letter-spacing:1px; height: 19px;" align="left" height="19px" colspan="2">
+																	<!-- IF STATEMENT USED TO EXIST DISPLAYING 'WHICH' SHIPMENT RECORD WAS BEING DISPLAYED. #1, #2, #3, ETC. -->
+																	ORDER DETAILS
+																								</td>
+																</tr>
+																<tr>
+																	<td width="600px" style="width: 600px;">
+																		<table cellpadding="0" cellspacing="0" border="0" width="100%" style="width: 100%;">
+																			<thead>
+																				<tr>
+																					<th style="font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px;letter-spacing:1px; height: 19px; width = 50%;" align="left" width="50%" height="19px" >
+																						Shipping Address
+																					</th>
+																					<th style="font-family:Arial,Helvetica,sans-serif;text-transform:uppercase;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 13px 16px;letter-spacing:1px; height: 19px; width = 50%;" align="left" width="50%" height="19px" >
+																						Shipping Method
+																					</th>
+																				</tr>
+																			</thead>
+																			<tbody>
+																		<!-- USED TO OBTAIN SPECIFIC SHIPMENT COMPANY, ADDRESS, AND OTHER INFO HERE AS PART OF THE LOOPED ROW -->
+																		<!-- VALUES MOVED TO THE STATIC VARIABLES SECTION UP TOP -->
+																				<tr>
+																					<!--Shipping Address - Start-->
+																					<td style="font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px; width: 50%;" align="left" width="50%" valign="top">
+																						%%=v(@shipping_company)=%%<br>
+																						<a>%%=v(@shipping_address_1)=%%</a><br>
+																						%%[ if not empty(@shipping_address_2) then ]%%
+																							<a>%%=v(@shipping_address_2)=%%</a><br>
+																						%%[ endif ]%%
+																						<a>%%=v(@shipping_city)=%%, %%=v(@shipping_state)=%%
+																						%%=v(@shipping_zip_code)=%%</a><br>
+																						<a>%%=v(@shipping_country)=%%</a><br>
+																					</td>
+																					<td style="font-family:Arial,Helvetica,sans-serif;font-weight:normal;font-size:11.4px;color:#000000;line-height:19px;padding:7px 0 13px 16px; width: 50%;" align="left" width="50%" valign="top">
+																						%%=v(@shipping_method)=%%<br>
+																						<!-- USED TO OUTPUT FOB AS %%=v(@fob)=%% -->
+																																					</td>
+																					<!--Shipping Address - End-->
+																				</tr>
+																			</tbody>
+																		</table>
+																	</td>
+																</tr>
+																<tr>
+																	<td style="font-family:Arial,Helvetica,sans-serif;font-weight:bold;color:#f4f2f0;font-size:11.4px;line-height:16px;color:#000000;padding:15px 0 2px 16px; letter-spacing:1px; height: 19px;" align="left" height="19px" colspan="2">
+																		ITEMS ORDERED
+																	</td>
+																</tr>
+																<tr>
+																	<td style="height: 1px;" align="left" height="1px" colspan="2">
+																		<table style="line-height:1px; width: 100%;" cellpadding="0" cellspacing="0" border="0" width="100%">
+																			<tr>
+																				<td width="15px" style="width: 15px">&nbsp;</td>
+																				<td style="border-bottom: 1px solid #dbd6d1;">&nbsp;</td>
+																				<td width="16px" style="width: 16px">&nbsp;</td>
+																			</tr>
+																		</table>
+																	</td>
+																</tr>
+																<!-- THEY USED TO CALCULATE TOTAL DISCOUNTS HERE BY LOOPING THROUGH LINE INFORMATION. SHOULDN'T BE NECESSARY. -->
+																<!-- HEADERS FOR ITEMS OUTPUT -->
+																<!-- (BEGIN) -->
+																				<tr>
+																	<td colspan="2">
+																		<table style="padding:0 0 13px 0;" cellpadding="0" cellspacing="0" border="0" width="638px" style="width: 638px;">
+																			<thead>
+																				<th style="font-family:Arial;font-size:11.4px;padding:16px 3px;letter-spacing:1px;line-height:15px; width: 35px;" align="center" valign="middle" width="35px">
+%%[
+/*
+Line #
+*/
+]%%																				</th>
+
+																				<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 50px;" align="center" valign="middle" width="50px">
+																					SKU Number
+																				</th>
+
+																				<th style="font-family:Arial;width:85px;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px;" width="85px" align="center" valign="middle">
+																					UPC
+																				</th>
+
+																				<th style="font-family:Arial;width:100px;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px;" width="100px" align="center" valign="middle">
+																					Product
+																				</th>
+
+																				<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 50px;" align="center" valign="middle" width="50px">
+																					Price
+																				</th>
+
+																				<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 50px;" align="center" valign="middle" width="50px">
+																					QTY
+																				</th>
+																				%%[ if @total_discounts > 0 then]%%
+																					<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 50px;" align="center" valign="middle" width="50px">
+																						Discount
+																					</th>
+																				%%[ endif ]%%
+																				<th style="font-family:Arial;font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 100px;" align="center" valign="middle" width="100px">
+																					Subtotal
+																				</th>
+
+																				%%[ IF @estimate THEN ]%%
+																				<th style="font-size:11.4px;padding:16px 0;letter-spacing:1px;line-height:15px; width: 50px;" align="center" valign="middle" width="50px">
+																					Estimated Ship Date
+																				</th>
+																				%%[ ENDIF ]%%
+																			</thead>
+																<!-- HEADERS FOR ITEMS OUTPUT -->
+																<!-- (END) -->
+
+																			<tbody>
+
+																<!-- ITEM LINES OUTPUT -->
+																<!-- (BEGIN) -->
+																%%[
+																set @item_lines = LookupOrderedRows("FromSAP_Order",0,"line_number asc","order_id",@order_id)
+																for @j = 1 to RowCount(@item_lines) do
+																	set @item_row = Row(@item_lines, @j)
+
+																	set @line_number = Field(@item_row, "line_number")
+
+UpdateDE("FromSAP_Order",2,"order_id",@order_id,"line_number",@line_number,"consumed",1)
+																	set @sku = Field(@item_row, "sku")
+																	set @upc = Field(@item_row, "upc")
+																	set @prod_desciption = Field(@item_row, "product_description")
+																	set @prod_color = Field(@item_row, "product_color")
+																	set @prod_size = Field(@item_row, "product_size")
+																	set @prod_price = Field(@item_row, "price")
+																	set @prod_qty_ordered = Field(@item_row, "qty_ordered")
+
+																	set @line_discount = Field(@item_row, "line_discount_price")
+																	set @prod_subtotal = Field(@item_row, "line_subtotal")
+
+																	/* NOTICE THAT LINE_DATE = PROD_EST_SHIP = ESTIMATED SHIPMENT DATE */
+																	set @prod_est_ship = Field(@item_row, "line_date")
+																]%%
+																																				<tr>
+																					<td style="font-family:Arial;font-size:11.4px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="middle">
+%%[
+/*																						<span>%%=v(@line_number)=%%</span>
+*/
+]%%																					</td>
+
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="middle">
+																						%%=v(@sku)=%%
+																					</td>
+
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="middle">
+																						%%=v(@upc)=%%
+																					</td>
+
+																					<td style="width:100px;font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#252525" width="100px" align="left" valign="middle">
+																						<table style="font-family:Arial;font-size:10px;padding:0;margin:0" cellpadding="0" cellspacing="0">
+																							<tbody>
+																								<tr>
+																									<td style="font-weight:bold;text-transform:uppercase;font-family:Arial;font-size:10px;padding:0;background-color:#ffffff;color:#252525;letter-spacing:1px;line-height:15px">
+
+	%%=v(@prod_desciption)=%%																								</td>
+																								</tr>
+
+
+																							</tbody>
+																						</table>
+																					</td>
+
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="middle">
+																						%%[ if empty(@prod_price) then ]%%
+																							&nbsp;
+																						%%[ else ]%%
+																							<span>%%=FormatCurrency(@prod_price,"en-CA")=%% CAD</span>
+																						%%[ endif ]%%
+																					</td>
+
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal" align="center" valign="middle">
+																						%%=v(@prod_qty_ordered)=%%
+																					</td>
+																					%%[if @total_discounts > 0 then]%%
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal" align="center" valign="middle">
+																						<span>%%=FormatCurrency(@line_discount,"en-CA")=%% CAD</span>
+																					</td>
+																					%%[endif]%%
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal" align="center" valign="middle">
+																						%%[ if empty(@prod_price) then ]%%
+																							&nbsp;
+																						%%[ else ]%%
+																							<span>%%=FormatCurrency(@prod_subtotal,"en-CA")=%% CAD</span>
+																						%%[ endif ]%%
+																					</td>
+
+																					%%[ IF @estimate THEN ]%%
+																					<td style="font-family:Arial;font-size:10px;padding:0 0 0 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal" align="center" valign="middle">
+																						<span>%%=FormatDate(@prod_est_ship, "M-DD-yy")=%%</span>
+																					</td>
+																					%%[ ENDIF ]%%
+																				</tr>
+																				<tr>
+																					<td height="20px" style="height: 20px;" %%[ IF @estimate AND @total_discounts > 0 THEN ]%% colspan="9" %%[ ELSEIF @estimate OR @total_discounts > 0 THEN ]%% colspan="8" %%[ ELSE ]%% colspan="7" %%[ ENDIF ]%%>
+																						&nbsp;
+																					</td>
+																				</tr>
+																				<tr>
+																					<td align="left" height="1px" style="height: 1px;" %%[ IF @estimate AND @total_discounts > 0 THEN ]%% colspan="9" %%[ ELSEIF @estimate OR @total_discounts > 0 THEN ]%% colspan="8" %%[ ELSE ]%% colspan="7" %%[ ENDIF ]%%>
+																						<table style="line-height:1px; width: 100%;" cellpadding="0" cellspacing="0" border="0" width="100%">
+																							<tr>
+																								<td width="15px" style="width: 15px">&nbsp;</td>
+																								<td style="border-bottom: 1px solid #dbd6d1;">&nbsp;</td>
+																								<td width="16px" style="width: 16px">&nbsp;</td>
+																							</tr>
+																						</table>
+																					</td>
+																				</tr>
+																				<tr>
+																					<td height="20px" style="height: 20px;" %%[ IF @estimate AND @total_discounts > 0 THEN ]%% colspan="9" %%[ ELSEIF @estimate OR @total_discounts > 0 THEN ]%% colspan="8" %%[ ELSE ]%% colspan="7" %%[ ENDIF ]%%>
+																						&nbsp;
+																					</td>
+																				</tr>
+																			%%[
+																				next @j
+																			]%%
+
+																<!-- ITEM LINES OUTPUT -->
+																<!-- (END) -->
+
+																			</tbody>
+																		</table>
+																	</td>
+																</tr>
+
+																%%[ if @total_discounts > 0 then]%%
+																	<tr>
+																		<td style="padding:0 0 20px 0;background-color:#ffffff;color:#000000;" align="right" valign="middle">
+																			<!-- @DISCOUNT IN THIS INSTANCE IS MAPPED TO THE DATA EXTENSION FIELD FOR order_discount ; assumes this is the total. Value was double mapped before. -->
+																			<font style="font-family:Arial;font-size:10px;letter-spacing:1px;font-weight:normal;">Total product discounts on this order:&nbsp;&nbsp;%%=FormatCurrency(@order_discounts, "en-CA")=%% CAD</font>
+																		</td>
+																		<td colspan="1" style="font-family:Arial;font-size:10px;padding:5px 0 5px 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="middle">
+																			&nbsp;
+																		</td>
+																	</tr>
+																%%[ endif ]%%
+																%%[ if LENGTH(@rma_upgrade_fee) > 0 then]%%
+																	<tr>
+																		<td style="padding:0 0 20px 0;background-color:#ffffff;color:#000000;" align="right" valign="middle">
+																			<!-- @DISCOUNT IN THIS INSTANCE IS MAPPED TO THE DATA EXTENSION FIELD FOR order_discount ; assumes this is the total. Value was double mapped before. -->
+																			<font style="font-family:Arial;font-size:10px;letter-spacing:1px;font-weight:normal;">Fee (already charged):&nbsp;&nbsp;$%%=v(@rma_upgrade_fee)=%%</font>
+																		</td>
+																		<td colspan="1" style="font-family:Arial;font-size:10px;padding:5px 0 5px 0;background-color:#ffffff;color:#000000;letter-spacing:1px;font-weight:normal;" align="center" valign="middle">
+																			&nbsp;
+																		</td>
+																	</tr>
+																%%[ endif ]%%
+
+															</table>
+														</td>
+													</tr>
+													<tr><td>&nbsp;</td></tr>
+													%%[next @i]%%
+										<tr>
+											<td style="font-family:Arial;font-size:14px;line-height:normal;color:#515151;padding:5px 0 0 5px;font-weight:normal;" align="left" valign="top">
+											Reminder: Your account will be charged if we do not receive your return product within <span style="font-weight:bold;text-decoration:underline;">7 Business Days</span>.
+											</td>
+										</tr>
+<!-- SHIPMENT LOOP HTML USED TO BE HERE -->
+<!-- (END) -->
+<!--Order Information Items - End-->
+												</tbody>
+											</table>
+										</td>
+									</tr>
+<!--Order Info - End-->
+
+									<tr>
+										<td style="font-family:Helvetica;font-size:14px;color:#000000; font-weight:bold; padding-bottom:10px;" align="center" valign="top">
+											<table cellpadding="0" cellspacing="0" bgcolor="#F6F6F6" border="0" width="638px" style="width: 638px">
+												<tr>
+													<!--Promo - Start-->
+													<td  align="left" valign="top">
+														&nbsp;
+													</td>
+													<td width="25px" valign="top" style="width: 25px">
+													&nbsp;
+													</td>
+													<!--Promo - End-->
+													<td style="font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:12px;line-height:16px;color:#000000; letter-spacing:1px; width: 250px;" valign="top" width="250px">
+														<table style="background-color:#def9ff;width: 100%;" cellpadding="0" cellspacing="0" border="0" width="100%">
+															<tr>
+																<td colspan="2" align="right" style="text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:11.4px;line-height:16px;color:#000000;padding:14px 10px 0 0;letter-spacing:1px;text-transform:uppercase; width: 255px; height: 19px;" height="19px" width="255px">
+																	Order Summary
+																</td>
+															</tr>
+															%%[if @total_before_discounts > 0 and @discounts > 0 then]%%
+															<tr>
+																<td style="padding:7px 0 0 0; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">Total Before Discounts:</td>
+																<td style="padding:7px 10px 0 0; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">
+																	%%[ if empty(@total_before_discounts) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		<span>%%=FormatCurrency(@total_before_discounts, "en-CA")=%% CAD</span>
+																	%%[ endif ]%%
+																</td>
+															</tr>
+															%%[endif]%%
+															%%[if @order_discounts != 0 then]%%
+															<tr>
+																<td style="padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">Discounts:</td>
+																<td style="padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">
+																	%%[ if empty(@order_discounts) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		%%[if @order_discounts > 0 then]%%
+																			<span>-%%=FormatCurrency(@order_discounts, "en-CA")=%% CAD</span>
+																		%%[ elseif @order_discounts < 0 then ]%%
+																			<span>%%=FormatCurrency(@order_discounts, "en-CA")=%% CAD</span>
+																		%%[ endif ]%%
+																	%%[ endif ]%%
+																</td>
+															</tr>
+															%%[ endif ]%%
+															<tr>
+																<td style="padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">Subtotal:</td>
+																<td style="padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">
+																	%%[ if empty(@subtotal) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		<span>%%=FormatCurrency(@subtotal, "en-CA")=%% CAD</span>
+																	%%[ endif ]%%
+																</td>
+															</tr>
+															<tr>
+																<td style="padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">Shipping:</td>
+																<td style="padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">
+																	%%[ if empty(@shipping) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		<span>%%=FormatCurrency(@shipping, "en-CA")=%% CAD</span>
+																	%%[ endif ]%%
+																</td>
+															</tr>
+															%%[if @handling_fee > 0 then]%%
+															<tr>
+																<td style="padding:7px 0 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">Handling Fee:</td>
+																<td style="padding:7px 10px 0 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">
+																	%%[ if empty(@handling_fee) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		<span>%%=FormatCurrency(@handling_fee, "en-CA")=%% CAD</span>
+																	%%[ endif ]%%
+																</td>
+															</tr>
+															%%[ endif ]%%
+															<tr>
+																<td style="padding:7px 0 11px 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">Tax:</td>
+																<td style="padding:7px 10px 11px 0px; text-align:right; font-family:Arial,Helvetica,sans-serif; font-weight:normal; font-size:11.4px; color:#000000; line-height:19px;">
+																	%%[ if empty(@tax) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		<span>%%=FormatCurrency(@tax,"en-CA")=%% CAD</span>
+																	%%[ endif ]%%
+																</td>
+															</tr>
+															<tr>
+																<td style="padding:16px 0 16px 0;background-color:#003b61;text-transform:uppercase;text-align:right;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:19px;color:#ffffff;">GRAND TOTAL:</td>
+																<td style="padding:16px 10px 16px 0;text-align:right;background-color:#003b61;font-family:Arial,Helvetica,sans-serif;font-weight:bold;font-size:13px;line-height:19px;color:#ffffff;">
+																	%%[ if empty(@grand_total) then ]%%
+																		&nbsp;
+																	%%[ else ]%%
+																		<span>%%=FormatCurrency(@grand_total, "en-CA")=%% CAD</span>
+																	%%[ endif ]%%
+																</td>
+															</tr>
+														</table>
+                            <!--<table style="background-color:#def9ff; width: 100%;" cellpadding="0" cellspacing="0" border="0" width="100%">
+															<tr>
+																<td style="padding:0 16px 10px 16px;background-color:#003b61;text-align:left;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:19px;color:#ffffff;">&#42;&nbsp;Your credit card will be charged if we do not receive your return product within <span style="font-weight:bold;text-decoration:underline;">7 business days</span> of receiving your replacement product.</td>
+															</tr>
+														</table>-->
+													</td>
+												</tr>
+											</table>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+<!--Footer - Start-->
+						<tr>
+							<td style="padding:0;border:none">
+								<table style="border-collapse:collapse;padding:0px;background-color:#eae8e5;width:100%;" width="100%" cellpadding="0" cellspacing="0" border="0">
+									<tr>
+                    <td style="margin:0;padding:22px 0 0 28px;color:#231f20;line-height:16px;height:125px; width: 125px;" align="left" height="125px" valign="top" width="125px">
+											<img src="http://image.test.exacttarget.com/lib/fe5c15707362027c7c12/m/1/footer-logo2.png" border="0" />
+										</td>
+										<td style="padding:21px 0 0 70px;color:#454545;line-height:15px;font-size:10.5px;height:125px" align="left" height="125px" valign="top">
+											Contact Information:<br>
+											YETI<br>
+											PO Box 163686<br>
+											Austin, TX 78716<br>
+                      Phone: <a href="tel:5123949384">512.394.9384</a><br>
+											<a style="color:#454545;text-decoration:none;font-weight:bold;font-family:Arial;" href="mailto:YETI%20Coolers%20Returns%20%3Cinternationalorders@yeti.com%3E?subject=YETI+Customer+Return+Request">internationalordes@yeti.com</a>
+										</td>
+                    <td style="margin:0;padding:27px 0 0 0;color:#ffffff;line-height:18px;font-size:11.4px;height:125px;" align="left" height="125px" valign="top">
+											<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://www.facebook.com/YetiCoolers?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+												<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/fb_logo.png" border="0" />
+											</a>
+											<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://twitter.com/Yeticoolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+												<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/twitter_logo.png" border="0" />
+											</a>
+                                                        				<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://instagram.com/yeticoolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+												<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/instagram_logo.png" border="0">
+											</a>
+											<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="http://www.youtube.com/user/YetiVideos?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+												<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/youtube_logo.png" border="0" />
+											</a>
+											<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="http://www.pinterest.com/yeticoolers/?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+												<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/pintrest_logo.png" border="0" />
+											</a>
+											<a style="color:#00a7fa;font-size:11.4px;font-family:Arial;text-decoration:none;padding: 0 2 0 2;" href="https://plus.google.com/+yeticoolers/posts?utm_source=auto&amp;utm_medium=email&amp;utm_content=confirmation_notification&amp;utm_campaign=em_confirmation">
+												<img src="http://image.emailyeticoolers.com/lib/fe8b1272736400747c/m/1/googleplus_logo.png" border="0" />
+											</a>
+										</td>
+
+									</tr>
+								</table>
+							</td>
+						</tr>
+<!--Footer - End-->
+					</table>
+				</td>
+			</tr>
+			<tr>
+				<td style="padding:15px 0 20px 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top"><custom name="opencounter" type="tracking">&#169; %%=Datepart(now(),"year")=%% YETI All Rights Reserved</td>
+			</tr>
+			<tr>
+				<td style="margin:0;padding:15px 0 0 0;color:#606060;line-height:18px;font-size:10.5px;font-family:Arial;font-weight:normal" align="center" valign="top">This email was sent to:  %%emailaddr%% <br><b>Email Sent By:</b>%%Member_Busname%%<br>%%Member_Addr%% %%Member_City%%, %%Member_State%%, %%Member_PostalCode%%, %%Member_Country%%</td>
+			</tr>
+		</table>
+	</body>
+</html>
